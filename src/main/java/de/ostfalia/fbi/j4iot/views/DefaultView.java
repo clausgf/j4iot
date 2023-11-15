@@ -1,4 +1,4 @@
-package de.ostfalia.fbi.j4iot.views.about;
+package de.ostfalia.fbi.j4iot.views;
 
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Image;
@@ -7,15 +7,14 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility.Margin;
-import de.ostfalia.fbi.j4iot.views.MainLayout;
 import jakarta.annotation.security.PermitAll;
 
 @PermitAll
-@PageTitle("About")
-@Route(value = "/about", layout = MainLayout.class)
-public class AboutView extends VerticalLayout {
+@PageTitle("Overview")
+@Route(value = "", layout = MainLayout.class)
+public class DefaultView extends VerticalLayout {
 
-    public AboutView() {
+    public DefaultView() {
         setSpacing(false);
 
         Image img = new Image("images/empty-plant.png", "placeholder plant");
