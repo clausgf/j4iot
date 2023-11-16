@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface DeviceRepository extends JpaRepository<Device, Long> {
     @Query("select d from Device d where lower(d.name) like lower(concat('%', :searchTerm, '%'))")
@@ -25,5 +26,5 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
     List<String> searchAllNamesByProject(@Param("project") Project project, @Param("searchTerm") String searchTerm);
 
     @Query("select d from Device d where d.project = :project and d.name = :name")
-    Device findByProjectAndName(@Param("project") Project project, @Param("name") String name);
+    Optional<Device> findByProjectAndName(@Param("project") Project project, @Param("name") String name);
 }

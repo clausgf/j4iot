@@ -11,7 +11,6 @@ import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
-import de.ostfalia.fbi.j4iot.data.entity.Tag;
 import de.ostfalia.fbi.j4iot.data.service.IotService;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
 import jakarta.annotation.security.PermitAll;
@@ -26,6 +25,7 @@ public class DeviceListView extends VerticalLayout {
     Logger log = LoggerFactory.getLogger(DeviceListView.class);
     Grid<Device> grid = new Grid<>(Device.class);
     TextField filterText = new TextField();
+
     DeviceForm form;
     IotService service;
 
@@ -93,20 +93,9 @@ public class DeviceListView extends VerticalLayout {
     private void configureGrid() {
         grid.addClassNames("device-grid");
         grid.setSizeFull();
-        grid.setColumns("active", "name", "location", "provisioningApproved");
-        grid.addComponentColumn(device -> {
-            log.info("rendering tags for device {}", device.getName());
-            HorizontalLayout layout = new HorizontalLayout();
-            for (Tag tag: device.getTags()) {
-                log.info("tag {}", tag.getName());
-                layout.add(createTagBadge(tag.getName(), tag.getColor()));
-            }
-            return layout;
-        }).setHeader("Tags");
-
+        grid.setColumns("name", "location", "tags", "provisioningApproved", "lastProvisioningRequestAt", "lastProvisionedAt", "lastSeenAt");
         // TODO add column project.name (ganz vorne)
-        // TODO add column renderer, z.B. für Tags
-        //grid.addColumn(project -> project.getDevices().size()).setHeader("#Devices");
+        // TODO add column renderer for Tags
         grid.getColumns().forEach(col -> col.setAutoWidth(true));
 
         grid.asSingleSelect().addValueChangeListener(event -> editDevice(event.getValue()));

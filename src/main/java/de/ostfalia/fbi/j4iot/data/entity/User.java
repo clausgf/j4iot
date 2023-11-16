@@ -1,12 +1,18 @@
 package de.ostfalia.fbi.j4iot.data.entity;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 @Entity
-public class User_ extends AbstractEntity{
+@Table(name = "user_",
+    indexes = {
+        @Index(columnList = "name", unique = true)
+})
+public class User extends AbstractEntity{
     @NotEmpty String name; // TODO index unique
     String passwordSalt;
     String passwordHash;

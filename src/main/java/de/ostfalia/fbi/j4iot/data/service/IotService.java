@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class IotService {
@@ -40,12 +41,8 @@ public class IotService {
         return projectRepository.searchAllNames(stringFilter);
     }
 
-    public long countProjects() {
-        return projectRepository.count();
-    }
-
-    public Project findProjectByName(String name) {
-        return projectRepository.findByName(name);
+    public Optional<Project> findProjectByName(String name) {
+        return projectRepository.findAllByNameOrderByName(name);
     }
 
     public void deleteProject(Project project) {
@@ -66,9 +63,8 @@ public class IotService {
         // TODO return devices related to the user only
         if (stringFilter == null || stringFilter.isEmpty()) {
             return deviceRepository.findAll();
-        } else {
-            return deviceRepository.searchAll(stringFilter);
         }
+        return deviceRepository.searchAll(stringFilter);
     }
 
     public List<String> findAllDeviceNames(String stringFilter) {
@@ -85,11 +81,9 @@ public class IotService {
         return deviceRepository.searchAllNamesByProject(project, stringFilter);
     }
 
-    public Device findDeviceByProjectAndName(Project project, String name) {
+    public Optional<Device> findDeviceByProjectAndName(Project project, String name) {
         return deviceRepository.findByProjectAndName(project, name);
     }
-
-    public long countDevices() { return deviceRepository.count(); }
 
     public void deleteDevice(Device device) { deviceRepository.delete(device); }
 

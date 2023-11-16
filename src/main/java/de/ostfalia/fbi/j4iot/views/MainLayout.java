@@ -28,6 +28,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vaadin.lineawesome.LineAwesomeIcon;
 
+import java.util.Optional;
+
 /**
  * The main view is a top-level placeholder for other views.
  */
@@ -39,8 +41,8 @@ public class MainLayout extends AppLayout {
 
     private H2 viewTitle;
 
-    private Project currentProject = null;
-    private Device currentDevice = null;
+    private Optional<Project> currentProject = Optional.empty();
+    private Optional<Device> currentDevice = Optional.empty();
 
     public MainLayout(SecurityService securityService, IotService iotService) {
         this.securityService = securityService;
@@ -57,8 +59,9 @@ public class MainLayout extends AppLayout {
         viewTitle = new H2();
         viewTitle.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
 
-        ComboBox<String> projectSelection = new ComboBox<>();
         ComboBox<String> deviceSelection = new ComboBox<>();
+
+        ComboBox<String> projectSelection = new ComboBox<>();
         projectSelection.setPlaceholder("Project");
         projectSelection.setTooltipText("Select the active project");
         projectSelection.setClearButtonVisible(true);
@@ -68,41 +71,46 @@ public class MainLayout extends AppLayout {
         });
         projectSelection.addValueChangeListener(comboBoxStringComponentValueChangeEvent -> {
             //log.info("projectSelection old: project={} device={}", currentProject, currentDevice);
-            Project newProject = iotService.findProjectByName(comboBoxStringComponentValueChangeEvent.getValue());
-            if (newProject == null)
+            Optional<Project> newProject = iotService.findProjectByName(comboBoxStringComponentValueChangeEvent.getValue());
+            if (newProject.isEmpty())
             {
-                currentProject = null;
+                currentProject = Optional.empty();
                 projectSelection.clear();
-                currentDevice = null;
+                currentDevice = Optional.empty();
                 deviceSelection.clear();
-            } else { // newProject != null
+            } else { // newProject present
                 if (!newProject.equals(currentProject)) {
-                    log.info("New project, clearing device!");
+                    log.info("New project differing from current one, clearing device!");
                     currentProject = newProject;
-                    currentDevice = null;
+                    currentDevice = Optional.empty();
                     deviceSelection.clear();
                 }
             }
             //log.info("projectSelection new: project={} device={}", currentProject, currentDevice);
         });
+
         deviceSelection.setPlaceholder("Device");
         deviceSelection.setTooltipText("Select the active device");
         deviceSelection.setClearButtonVisible(true);
         deviceSelection.setPrefixComponent(VaadinIcon.SEARCH.create());
         deviceSelection.addFocusListener(comboBoxFocusEvent -> {
-            if (currentProject != null) {
-                deviceSelection.setItems(iotService.findAllDeviceNamesByProject(currentProject, ""));
+            if (currentProject.isPresent()) {
+                deviceSelection.setItems(iotService.findAllDeviceNamesByProject(currentProject.get(), ""));
             } else {
                 deviceSelection.setItems();
             }
         });
         deviceSelection.addValueChangeListener(comboBoxStringComponentValueChangeEvent -> {
             //log.info("deviceSelection old: project={} device={}", currentProject, currentDevice);
-            currentDevice = iotService.findDeviceByProjectAndName(currentProject, comboBoxStringComponentValueChangeEvent.getValue());
-            //log.info("deviceSelection new: project={} device={}", currentProject, currentDevice);
-            if (currentDevice == null) {
+            if (currentProject.isEmpty()) {
+                currentDevice = Optional.empty();
+            } else {
+                currentDevice = iotService.findDeviceByProjectAndName(currentProject.get(), comboBoxStringComponentValueChangeEvent.getValue());
+            }
+            if (currentDevice.isEmpty()) {
                 deviceSelection.clear();
             }
+            //log.info("deviceSelection new: project={} device={}", currentProject, currentDevice);
         });
 
         // String u = securityService.getAuthenticatedUser().getUsername();

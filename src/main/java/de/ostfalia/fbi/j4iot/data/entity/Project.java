@@ -1,41 +1,56 @@
 package de.ostfalia.fbi.j4iot.data.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 
+import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 
 @Entity
+@Table(indexes = {
+        @Index(columnList = "name", unique = true)
+})
 public class Project extends AbstractEntity {
-    @NotEmpty @Column(length = 40) String name = "";
-    @NotNull @Column(length = 240) String description = "";
-    @NotNull Boolean active = true;
-    // created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    // updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    @NotNull @NotEmpty @Column(length = 40, unique = true)
+    private String name = "";
+    @NotNull private String description = "";
+    @NotNull private String tags = "";
+    @CreatedDate
+    private Instant createdAt;
+    @LastModifiedDate // TODO https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#auditing.annotations
+    private Instant updatedAt;
 
-    @NotNull Boolean autocreateDevices = true;
-    @NotNull Boolean provisioningAutoapproval = true;
+    @NotNull private Boolean autocreateDevices = true;
+    @NotNull private Boolean provisioningAutoapproval = true;
 
-    @OneToMany(mappedBy = "project") List<Tag> tags = new LinkedList<>();
-    @OneToMany(mappedBy = "project") List<ProvisioningToken> provisioningTokens = new LinkedList<>();
-    @OneToMany(mappedBy = "project") List<Device> devices = new LinkedList<>();
+    @NotNull private String deviceTagsAvailable = "";
+
+    @OneToMany(mappedBy = "project") @OrderBy("createdAt desc")
+    private List<ProvisioningToken> provisioningTokens = new LinkedList<>();
+    @OneToMany(mappedBy = "project") @OrderBy("name")
+    private List<Device> devices = new LinkedList<>();
+
 
     public Project() {
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
     }
 
-    public Project(String name, String description) {
+    public Project(String name, String description, String tags) {
         this.name = name;
         this.description = description;
+        this.tags = tags;
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
     }
 
     public String getName() {
         return name;
     }
-
     public void setName(String name) {
         this.name = name;
     }
@@ -43,23 +58,28 @@ public class Project extends AbstractEntity {
     public String getDescription() {
         return description;
     }
-
     public void setDescription(String description) {
         this.description = description;
     }
 
-    public Boolean getActive() {
-        return active;
+    public String getTags() {
+        return tags;
+    }
+    public void setTags(String tags) {
+        this.tags = tags;
     }
 
-    public void setActive(Boolean active) {
-        this.active = active;
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 
     public Boolean getAutocreateDevices() {
         return autocreateDevices;
     }
-
     public void setAutocreateDevices(Boolean autocreateDevices) {
         this.autocreateDevices = autocreateDevices;
     }
@@ -67,32 +87,22 @@ public class Project extends AbstractEntity {
     public Boolean getProvisioningAutoapproval() {
         return provisioningAutoapproval;
     }
-
     public void setProvisioningAutoapproval(Boolean provisioningAutoapproval) {
         this.provisioningAutoapproval = provisioningAutoapproval;
     }
 
-    public List<Tag> getTags() {
-        return tags;
+    public String getDeviceTagsAvailable() {
+        return deviceTagsAvailable;
     }
-
-    public void setTags(List<Tag> tags) {
-        this.tags = tags;
+    public void setDeviceTagsAvailable(String deviceTagsAvailable) {
+        this.deviceTagsAvailable = deviceTagsAvailable;
     }
 
     public List<ProvisioningToken> getProvisioningTokens() {
         return provisioningTokens;
     }
 
-    public void setProvisioningTokens(List<ProvisioningToken> provisioningTokens) {
-        this.provisioningTokens = provisioningTokens;
-    }
-
     public List<Device> getDevices() {
         return devices;
-    }
-
-    public void setDevices(List<Device> devices) {
-        this.devices = devices;
     }
 }

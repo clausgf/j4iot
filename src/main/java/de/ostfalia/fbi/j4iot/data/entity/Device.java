@@ -4,59 +4,67 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 
+import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 
-@Entity
+@Entity()
+@Table(indexes = {
+        @Index(columnList = "name", unique = true)
+})
 public class Device extends AbstractEntity {
-
-    // todo Standard-Sortierung alphabetisch!
-    @NotEmpty @Column(length = 40) String name = ""; // TODO index
-    @NotNull @Column(length = 240) String description = "";
-    @NotNull @Column(length = 240) String location = "";
-    @NotNull Boolean active = true;
-
-    @NotNull Boolean provisioningApproved = false;
-    // TODO last_provisioning_request_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
-    // TODO last_provisioned_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
-
-    // TODO created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    // TODO updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    // TODO last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
-
-    // TODO eager fetching might not be a good idea
-    @ManyToMany(fetch = FetchType.EAGER, mappedBy = "devices")
-    List<Tag> tags = new LinkedList<>();
     @ManyToOne
-    @JsonIgnoreProperties({"tags", "provisioningTokens", "devices"})
+    @JsonIgnoreProperties({"provisioningTokens", "devices"})
     @NotNull Project project;
 
+    @NotNull @NotEmpty @Column(length = 40, unique = true)
+    private String name = "";
+    @NotNull private String description = "";
+    @NotNull private String location = "";
+    @NotNull private String tags = "";
+    @CreatedDate
+    private Instant createdAt;
+    @LastModifiedDate
+    private Instant updatedAt;
+
+    @NotNull private Boolean provisioningApproved = false;
+    private Instant lastProvisioningRequestAt = null;
+    private Instant lastProvisionedAt = null;
+
+    private Instant lastSeenAt = null;
+
+    @OneToMany(mappedBy = "device") @OrderBy("createdAt desc")
+    private List<AccessToken> tokens = new LinkedList<>();
+
+
     public Device() {
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
     }
 
-    public Device(Project project, String name, String description, String location) {
+    public Device(Project project, String name, String description, String location, String tags) {
         this.project = project;
         this.name = name;
         this.description = description;
         this.location = location;
-    }
-
-    public Device(Project project, String name, String description, String location, List<Tag> tags) {
-        this.project = project;
-        this.name = name;
-        this.description = description;
-        this.location = location;
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
         this.tags = tags;
-        for (Tag tag: tags) {
-            tag.getDevices().add(this);
-        }
+    }
+
+    public Project getProject() {
+        return project;
+    }
+    public void setProject(Project project) {
+        this.project = project;
     }
 
     public String getName() {
         return name;
     }
-
     public void setName(String name) {
         this.name = name;
     }
@@ -64,7 +72,6 @@ public class Device extends AbstractEntity {
     public String getDescription() {
         return description;
     }
-
     public void setDescription(String description) {
         this.description = description;
     }
@@ -72,45 +79,54 @@ public class Device extends AbstractEntity {
     public String getLocation() {
         return location;
     }
-
     public void setLocation(String location) {
         this.location = location;
     }
 
-    public Boolean getActive() {
-        return active;
+    public String getTags() {
+        return tags;
+    }
+    public void setTags(String tags) {
+        this.tags = tags;
     }
 
-    public void setActive(Boolean active) {
-        this.active = active;
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 
     public Boolean getProvisioningApproved() {
         return provisioningApproved;
     }
-
     public void setProvisioningApproved(Boolean provisioningApproved) {
         this.provisioningApproved = provisioningApproved;
     }
 
-    public List<Tag> getTags() {
-        return tags;
+    public Instant getLastProvisioningRequestAt() {
+        return lastProvisioningRequestAt;
+    }
+    public void setLastProvisioningRequestAt(Instant lastProvisioningRequestAt) {
+        this.lastProvisioningRequestAt = lastProvisioningRequestAt;
     }
 
-    public void setTags(List<Tag> tags) {
-        this.tags = tags;
+    public Instant getLastProvisionedAt() {
+        return lastProvisionedAt;
+    }
+    public void setLastProvisionedAt(Instant lastProvisionedAt) {
+        this.lastProvisionedAt = lastProvisionedAt;
     }
 
-    public Project getProject() {
-        return project;
+    public Instant getLastSeenAt() {
+        return lastSeenAt;
+    }
+    public void setLastSeenAt(Instant lastSeenAt) {
+        this.lastSeenAt = lastSeenAt;
     }
 
-    public void setProject(Project project) {
-        this.project = project;
-    }
-
-    public void addTag(Tag tag) {
-        this.tags.add(tag);
-        tag.getDevices().add(this);
+    public List<AccessToken> getTokens() {
+        return tokens;
     }
 }

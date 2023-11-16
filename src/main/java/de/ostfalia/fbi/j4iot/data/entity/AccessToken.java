@@ -13,10 +13,10 @@ import java.time.Instant;
 @Table(indexes = {
         @Index(columnList = "token", unique = true)
 })
-public class ProvisioningToken extends AbstractEntity {
+public class AccessToken extends AbstractEntity {
     @ManyToOne
-    @JsonIgnoreProperties({"provisioningTokens", "devices"})
-    @NotNull Project project;
+    @JsonIgnoreProperties({"project", "tokens"})
+    @NotNull Device device;
 
     @NotNull @NotEmpty @Column(unique = true)
     private String token; // TODO unique+index
@@ -25,31 +25,29 @@ public class ProvisioningToken extends AbstractEntity {
     @UpdateTimestamp
     private Instant updatedAt;
 
-    @NotNull private Integer authTokenExpiresInSeconds = 7*24*60*60;
     @NotNull private Instant expiresAt;
     private Instant lastUseAt = null;
 
 
-    public ProvisioningToken() {
+    public AccessToken() {
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
-    public ProvisioningToken(Project project, String token, Integer authTokenExpiresInSeconds, Instant expiresAt) {
-        this.project = project;
+    public AccessToken(Device device, String token, Instant expiresAt) {
+        this.device = device;
         this.token = token;
-        this.authTokenExpiresInSeconds = authTokenExpiresInSeconds;
-        this.expiresAt = expiresAt;
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
+        this.expiresAt = expiresAt;
     }
 
-    public Project getProject() {
-        return project;
+    public Device getDevice() {
+        return device;
     }
 
-    public void setProject(Project project) {
-        this.project = project;
+    public void setDevice(Device device) {
+        this.device = device;
     }
 
     public String getToken() {
@@ -66,14 +64,6 @@ public class ProvisioningToken extends AbstractEntity {
 
     public Instant getUpdatedAt() {
         return updatedAt;
-    }
-
-    public Integer getAuthTokenExpiresInSeconds() {
-        return authTokenExpiresInSeconds;
-    }
-
-    public void setAuthTokenExpiresInSeconds(Integer authTokenExpiresInSeconds) {
-        this.authTokenExpiresInSeconds = authTokenExpiresInSeconds;
     }
 
     public Instant getExpiresAt() {

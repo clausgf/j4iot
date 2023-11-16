@@ -14,6 +14,7 @@ import de.ostfalia.fbi.j4iot.data.service.IotService;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
 import jakarta.annotation.security.PermitAll;
 
+// TODO base this list on a generic one
 @PermitAll
 @Route(value="/projects", layout = MainLayout.class)
 @PageTitle("Projects")
@@ -66,9 +67,14 @@ public class ProjectListView extends VerticalLayout {
     private void configureGrid() {
         grid.addClassNames("project-grid");
         grid.setSizeFull();
-        grid.setColumns("active", "name", "autocreateDevices", "provisioningAutoapproval");
-        //grid.addColumn(project -> project.getDevices().size()).setHeader("#Devices");
-        // TODO Tags als Badges in die Tabelle einfügen
+        grid.setColumns("name", "tags", "autocreateDevices", "provisioningAutoapproval");
+        //grid.addColumn(new InstantRenderer<>(Project::getCreatedAt)).setHeader("Created");
+        //grid.addColumn(new InstantRenderer<>(Project::getCreatedAt)).setHeader("Updated");
+        // TODO add number of provisioning tokens (linking to some editor?)
+        // TODO add number of devices (linking to some editor?)
+        // TODO render tags as badges with color code
+        // TODO add an edit button
+        // TODO add a delete button
         grid.getColumns().forEach(col -> col.setAutoWidth(true));
 
         grid.asSingleSelect().addValueChangeListener(event -> editProject(event.getValue()));

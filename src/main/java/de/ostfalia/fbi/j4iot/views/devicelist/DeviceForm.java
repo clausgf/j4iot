@@ -6,7 +6,10 @@ import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.formlayout.FormLayout;
+import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Section;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
@@ -15,11 +18,15 @@ import de.ostfalia.fbi.j4iot.data.entity.Device;
 
 public class DeviceForm extends FormLayout {
     TextField name = new TextField("Device name");
-    TextField location = new TextField("Localtion");
     TextField description = new TextField("Description");
-    Checkbox active = new Checkbox("Active");
-    Checkbox autocreateDevices = new Checkbox("Autocreate devices");
-    Checkbox provisioningAutoapproval = new Checkbox("Provisioning autoapproval");
+    TextField location = new TextField("Location");
+    TextField tags = new TextField("Tags");
+    DateTimePicker createdAt = new DateTimePicker("Created at");
+    DateTimePicker updatedAt = new DateTimePicker("Updated at");
+    Checkbox provisioningApproved = new Checkbox("Provisioning approved");
+    DateTimePicker lastProvisioningRequestAt = new DateTimePicker("Last provisioning request at");
+    DateTimePicker lastProvisionedAt = new DateTimePicker("Last provisioned at");
+    DateTimePicker lastSeenAt = new DateTimePicker("Last seen at");
 
     Button save = new Button("Save");
     Button delete = new Button("Delete");
@@ -30,8 +37,24 @@ public class DeviceForm extends FormLayout {
     public DeviceForm() {
         addClassName("device-form");
         binder.bindInstanceFields(this);
+        createdAt.setReadOnly(true);
+        updatedAt.setReadOnly(true);
+        lastProvisioningRequestAt.setReadOnly(true);
+        lastProvisionedAt.setReadOnly(true);
+        lastSeenAt.setReadOnly(true);
 
-        add(name, location, description, active, autocreateDevices, provisioningAutoapproval, createButtonsLayout());
+        H3 sectionGeneralTitle = new H3("Device");
+        Section sectionGeneral = new Section(sectionGeneralTitle, name, description, location, tags, createdAt, updatedAt, lastSeenAt);
+        add(sectionGeneral);
+
+        H3 sectionProvisioningTitle = new H3("Device Provisioning");
+        Section sectionProvisioning = new Section(sectionProvisioningTitle, provisioningApproved, lastProvisioningRequestAt, lastProvisionedAt);
+        add(sectionProvisioning);
+
+        H3 sectionTokensTitle = new H3("Device Tokens");
+
+        Section sectionButtons = new Section(createButtonsLayout());
+        add(sectionButtons);
     }
 
     public void setDevice(Device device) {

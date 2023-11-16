@@ -2,8 +2,10 @@ package de.ostfalia.fbi.j4iot.data.entity;
 
 import jakarta.persistence.*;
 
+import java.io.Serializable;
+
 @MappedSuperclass
-public class AbstractEntity {
+public class AbstractEntity implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "idgenerator")
