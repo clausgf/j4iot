@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
@@ -13,14 +14,15 @@ import java.util.List;
 
 @Entity()
 @Table(indexes = {
-        @Index(columnList = "name", unique = true)
+        @Index(columnList = "name", unique = true) // TODO unique constraint should be project_id+name
 })
 public class Device extends AbstractEntity {
     @ManyToOne
     @JsonIgnoreProperties({"provisioningTokens", "devices"})
     @NotNull Project project;
 
-    @NotNull @NotEmpty @Column(length = 40, unique = true)
+    @NotNull @NotEmpty @Column(length = 40, unique = true) // TODO siehe oben
+    @Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9_\\-+]*$", message = "Name must start with a letter or a number, the rest can also contain plus, minus or underscores.")
     private String name = "";
     @NotNull private String description = "";
     @NotNull private String location = "";
@@ -36,13 +38,21 @@ public class Device extends AbstractEntity {
 
     private Instant lastSeenAt = null;
 
-    @OneToMany(mappedBy = "device") @OrderBy("createdAt desc")
-    private List<AccessToken> tokens = new LinkedList<>();
+    @OneToMany(mappedBy = "device", fetch = FetchType.EAGER) @OrderBy("createdAt desc")
+    private List<DeviceToken> deviceTokens = new LinkedList<>();
 
 
     public Device() {
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
+    }
+
+    public Device(Project project, String name, Boolean provisioningApproved) {
+        this.project = project;
+        this.name = name;
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
+        this.provisioningApproved = provisioningApproved;
     }
 
     public Device(Project project, String name, String description, String location, String tags) {
@@ -126,7 +136,7 @@ public class Device extends AbstractEntity {
         this.lastSeenAt = lastSeenAt;
     }
 
-    public List<AccessToken> getTokens() {
-        return tokens;
+    public List<DeviceToken> getDeviceTokens() {
+        return deviceTokens;
     }
 }

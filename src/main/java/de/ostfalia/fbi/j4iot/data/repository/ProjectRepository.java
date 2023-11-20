@@ -11,7 +11,11 @@ import java.util.Optional;
 public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     //@Query("select p from Project p where p.name = :name order by p.name")
-    Optional<Project> findAllByNameOrderByName(@Param("name") String name);
+    List<Project> findAllByName(@Param("name") String name);
+
+    Optional<Project> findOneByName(@Param("name") String name);
+
+    Boolean existsByName(String name);
 
     @Query("select p from Project p where (lower(p.name) like lower(concat('%', :searchTerm, '%'))) or (lower(p.tags) like lower(concat('%', :searchTerm, '%'))) order by p.name")
     List<Project> searchAll(@Param("searchTerm") String searchTerm);

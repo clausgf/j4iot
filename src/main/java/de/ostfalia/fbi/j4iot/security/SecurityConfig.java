@@ -2,16 +2,14 @@ package de.ostfalia.fbi.j4iot.security;
 
 import com.vaadin.flow.spring.security.VaadinWebSecurity;
 import de.ostfalia.fbi.j4iot.views.LoginView;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @EnableWebSecurity
+//@EnableMethodSecurity
 @Configuration
 public class SecurityConfig extends VaadinWebSecurity {
 
@@ -22,6 +20,12 @@ public class SecurityConfig extends VaadinWebSecurity {
         setLoginView(http, LoginView.class);
     }
 
+    @Override
+    protected void configure(WebSecurity web) throws Exception {
+        web.ignoring().requestMatchers(AntPathRequestMatcher.antMatcher("/api/**"));
+        super.configure(web);
+    }
+/*
     @Bean
     public UserDetailsService user() {
         UserDetails user = User.builder()
@@ -37,4 +41,5 @@ public class SecurityConfig extends VaadinWebSecurity {
                 .build();
         return new InMemoryUserDetailsManager(user, admin);
     }
+*/
 }

@@ -11,15 +11,15 @@ import java.time.Instant;
 
 @Entity
 @Table(indexes = {
-        @Index(columnList = "token", unique = true)
+        @Index(columnList = "token", unique = true) // token really has to be unique
 })
-public class AccessToken extends AbstractEntity {
+public class DeviceToken extends AbstractEntity {
     @ManyToOne
     @JsonIgnoreProperties({"project", "tokens"})
     @NotNull Device device;
 
-    @NotNull @NotEmpty @Column(unique = true)
-    private String token; // TODO unique+index
+    @NotNull @NotEmpty
+    private String token;
     @CreationTimestamp
     private Instant createdAt;
     @UpdateTimestamp
@@ -29,16 +29,16 @@ public class AccessToken extends AbstractEntity {
     private Instant lastUseAt = null;
 
 
-    public AccessToken() {
+    public DeviceToken() {
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
-    public AccessToken(Device device, String token, Instant expiresAt) {
+    public DeviceToken(Device device, String token, Instant expiresAt) {
         this.device = device;
         this.token = token;
         this.createdAt = Instant.now();
-        this.updatedAt = this.createdAt;
+        this.updatedAt = Instant.now();
         this.expiresAt = expiresAt;
     }
 
@@ -69,7 +69,6 @@ public class AccessToken extends AbstractEntity {
     public Instant getExpiresAt() {
         return expiresAt;
     }
-
     public void setExpiresAt(Instant expiresAt) {
         this.expiresAt = expiresAt;
     }
@@ -77,9 +76,7 @@ public class AccessToken extends AbstractEntity {
     public Instant getLastUseAt() {
         return lastUseAt;
     }
-
     public void setLastUseAt(Instant lastUseAt) {
         this.lastUseAt = lastUseAt;
     }
-
 }

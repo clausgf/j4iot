@@ -11,7 +11,7 @@ import java.time.Instant;
 
 @Entity
 @Table(indexes = {
-        @Index(columnList = "token", unique = true)
+        @Index(columnList = "token", unique = true) // todo token should be unique by project_id+token
 })
 public class ProvisioningToken extends AbstractEntity {
     @ManyToOne
@@ -19,13 +19,12 @@ public class ProvisioningToken extends AbstractEntity {
     @NotNull Project project;
 
     @NotNull @NotEmpty @Column(unique = true)
-    private String token; // TODO unique+index
+    private String token;
     @CreationTimestamp
     private Instant createdAt;
     @UpdateTimestamp
     private Instant updatedAt;
 
-    @NotNull private Integer authTokenExpiresInSeconds = 7*24*60*60;
     @NotNull private Instant expiresAt;
     private Instant lastUseAt = null;
 
@@ -35,10 +34,9 @@ public class ProvisioningToken extends AbstractEntity {
         this.updatedAt = Instant.now();
     }
 
-    public ProvisioningToken(Project project, String token, Integer authTokenExpiresInSeconds, Instant expiresAt) {
+    public ProvisioningToken(Project project, String token, Instant expiresAt) {
         this.project = project;
         this.token = token;
-        this.authTokenExpiresInSeconds = authTokenExpiresInSeconds;
         this.expiresAt = expiresAt;
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
@@ -47,7 +45,6 @@ public class ProvisioningToken extends AbstractEntity {
     public Project getProject() {
         return project;
     }
-
     public void setProject(Project project) {
         this.project = project;
     }
@@ -55,7 +52,6 @@ public class ProvisioningToken extends AbstractEntity {
     public String getToken() {
         return token;
     }
-
     public void setToken(String token) {
         this.token = token;
     }
@@ -68,18 +64,9 @@ public class ProvisioningToken extends AbstractEntity {
         return updatedAt;
     }
 
-    public Integer getAuthTokenExpiresInSeconds() {
-        return authTokenExpiresInSeconds;
-    }
-
-    public void setAuthTokenExpiresInSeconds(Integer authTokenExpiresInSeconds) {
-        this.authTokenExpiresInSeconds = authTokenExpiresInSeconds;
-    }
-
     public Instant getExpiresAt() {
         return expiresAt;
     }
-
     public void setExpiresAt(Instant expiresAt) {
         this.expiresAt = expiresAt;
     }
@@ -87,7 +74,6 @@ public class ProvisioningToken extends AbstractEntity {
     public Instant getLastUseAt() {
         return lastUseAt;
     }
-
     public void setLastUseAt(Instant lastUseAt) {
         this.lastUseAt = lastUseAt;
     }

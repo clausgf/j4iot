@@ -1,4 +1,4 @@
-package de.ostfalia.fbi.j4iot.views.devicelist;
+package de.ostfalia.fbi.j4iot.views.device;
 
 import com.vaadin.flow.component.ComponentEvent;
 import com.vaadin.flow.component.ComponentEventListener;
@@ -27,6 +27,8 @@ public class DeviceForm extends FormLayout {
     DateTimePicker lastProvisioningRequestAt = new DateTimePicker("Last provisioning request at");
     DateTimePicker lastProvisionedAt = new DateTimePicker("Last provisioned at");
     DateTimePicker lastSeenAt = new DateTimePicker("Last seen at");
+
+    // TODO list of tokens, create new, delete
 
     Button save = new Button("Save");
     Button delete = new Button("Delete");

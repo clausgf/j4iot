@@ -13,18 +13,27 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
     @Query("select d from Device d where lower(d.name) like lower(concat('%', :searchTerm, '%'))")
     List<Device> searchAll(@Param("searchTerm") String searchTerm);
 
+    //@Query("select d from Device d where d.project = :project and d.name = :name")
+    Optional<Device> findOneByProjectAndName(@Param("project") Project project, @Param("name") String name);
+
+    @Query("select case when count(d) > 0 then true else false end from Device d where d.name = :deviceName and d.project.name = :projectName")
+    Boolean existsByProjectNameAndDeviceName(@Param("projectName") String projectName, @Param("deviceName") String deviceName);
+
+    @Query("select d from Device d where d.project.name = :projectName")
+    List<Device> findAllByProjectName(@Param("projectName") String projectName);
+
+    @Query("select d from Device d where d.project.name = :projectName and lower(d.name) like lower(concat('%', :searchTerm, '%'))")
+    List<Device> searchAllByProjectName(@Param("projectName") String projectName, @Param("searchTerm") String searchTerm);
+
     @Query("select d.name from Device d")
     List<String> findAllNames();
 
     @Query("select d.name from Device d where lower(d.name) like lower(concat('%', :searchTerm, '%'))")
     List<String> searchAllNames(@Param("searchTerm") String searchTerm);
 
-    @Query("select d.name from Device d where d.project = :project")
-    List<String> findAllNamesByProject(@Param("project") Project project);
+    @Query("select d.name from Device d where d.project.name = :projectName")
+    List<String> findAllNamesByProjectName(@Param("projectName") String projectName);
 
-    @Query("select d.name from Device d where d.project = :project and lower(d.name) like lower(concat('%', :searchTerm, '%'))")
-    List<String> searchAllNamesByProject(@Param("project") Project project, @Param("searchTerm") String searchTerm);
-
-    @Query("select d from Device d where d.project = :project and d.name = :name")
-    Optional<Device> findByProjectAndName(@Param("project") Project project, @Param("name") String name);
+    @Query("select d.name from Device d where d.project = :projectName and lower(d.name) like lower(concat('%', :searchTerm, '%'))")
+    List<String> searchAllNamesByProjectName(@Param("project") String projectName, @Param("searchTerm") String searchTerm);
 }
