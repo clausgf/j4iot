@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:12.2
+    restart: always
+    environment:
+      POSTGRES_USER: {$POSTGRES_USER}
+      POSTGRES_PASSWORD: {$POSTGRES_PASSWORD}
+      POSTGRES_DB: {$POSTGRES_DB}
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  vaadin:
+    image: j4iot
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+      - backend
+      - global-proxy
+    depends_on:
+      - postgres
+    labels:
+      - "traefik.enable=true" # enables the service
+      - "traefik.network=global-proxy" # use the global-proxy network
+      - "traefik.http.services.j4iot.loadbalancer.server.port=8080" # port of the service
+      - "traefik.http.routers.j4iot.service=j4iot" # name of the service
+      - "traefik.http.routers.j4iot.rule=(Host(`${traefik_domain}`) || Host(`141.41.235.51`)) && PathPrefix(`${traefik_path}`)"
+      - "traefik.http.routers.j4iot.entrypoints=websecure" # use the websecure entrypoint
+      - "traefik.http.routers.j4iot.tls=true" # enable TLS
+
+networks:
+  backend:
+    driver: bridge
+  global-proxy:
+    external: true
