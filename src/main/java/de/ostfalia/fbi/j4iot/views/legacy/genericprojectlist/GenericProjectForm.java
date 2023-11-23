@@ -1,10 +1,10 @@
-package de.ostfalia.fbi.j4iot.views.genericprojectlist;
+package de.ostfalia.fbi.j4iot.views.legacy.genericprojectlist;
 
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.textfield.TextField;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
-import de.ostfalia.fbi.j4iot.views.generic.GenericListViewForm;
+import de.ostfalia.fbi.j4iot.views.legacy.generic.GenericListViewForm;
 
 // TODO base this form on a generic one
 public class GenericProjectForm extends GenericListViewForm<Project> {

@@ -70,6 +70,7 @@ public class UserMasterDetail extends Div implements BeforeEnterObserver {
 
     private final UserService userService;
 
+
     public UserMasterDetail(UserService userService) {
         this.userService = userService;
         addClassNames("master-detail-view");

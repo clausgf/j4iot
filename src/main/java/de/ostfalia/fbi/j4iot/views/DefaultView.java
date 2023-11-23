@@ -1,7 +1,6 @@
 package de.ostfalia.fbi.j4iot.views;
 
 import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
@@ -17,14 +16,10 @@ public class DefaultView extends VerticalLayout {
     public DefaultView() {
         setSpacing(false);
 
-        Image img = new Image("images/empty-plant.png", "placeholder plant");
-        img.setWidth("200px");
-        add(img);
-
-        H2 header = new H2("This place intentionally left empty");
+        H2 header = new H2("j4iot. IoT Management made simple.");
         header.addClassNames(Margin.Top.XLARGE, Margin.Bottom.MEDIUM);
         add(header);
-        add(new Paragraph("It’s a place where you can grow your own UI 🤗"));
+        add(new Paragraph("Select a view from the menu."));
 
         setSizeFull();
         setJustifyContentMode(JustifyContentMode.CENTER);

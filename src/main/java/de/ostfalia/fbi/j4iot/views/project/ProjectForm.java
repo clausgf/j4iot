@@ -1,30 +1,47 @@
 package de.ostfalia.fbi.j4iot.views.project;
 
-import com.vaadin.flow.component.ComponentEvent;
-import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.formlayout.FormLayout;
-import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.icon.Icon;
-import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Section;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
-import com.vaadin.flow.shared.Registration;
-import de.ostfalia.fbi.j4iot.InstantRenderer;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.Route;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
-import de.ostfalia.fbi.j4iot.data.entity.ProvisioningToken;
 import de.ostfalia.fbi.j4iot.data.service.IotService;
-import org.vaadin.addon.stefan.clipboard.ClientsideClipboard;
+import de.ostfalia.fbi.j4iot.views.MainLayout;
+import jakarta.annotation.security.PermitAll;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.LinkedList;
+import java.util.Optional;
 
-// TODO base this form on a generic one
-public class ProjectForm extends FormLayout {
+@PermitAll
+@PageTitle("Project settings")
+@Route(value="/projects/:id", layout = MainLayout.class)
+public class ProjectForm extends FormLayout implements BeforeEnterObserver {
+
+    private Logger log = LoggerFactory.getLogger(ProjectForm.class);
+    protected final Class<Project> modelClass;
+    protected Button reset = new Button ("Reset");
+    protected Button save = new Button("Save");
+
+    protected Project item;
+    protected BeanValidationBinder<Project> binder;
+
+    public final static String ID_ROUTING_PARAM = "id";
     IotService service;
 
     TextField name = new TextField("Project name");
@@ -35,137 +52,98 @@ public class ProjectForm extends FormLayout {
     Checkbox autocreateDevices = new Checkbox("Autocreate devices");
     Checkbox provisioningAutoapproval = new Checkbox("Provisioning autoapproval");
 
-    TextField defaultProvisioningTokenLength = new TextField("Provisioning token length");
-    TextField defaultProvisioningTokenExpiresInSeconds = new TextField("Provisioning token expiry (seconds)");
-    TextField defaultDeviceTokenLength = new TextField("Device token length (default)");
-    TextField defaultDeviceTokenExpiresInSeconds = new TextField("Device token expiry (default seconds)");
-
-    // TODO list of provisioningTokens, create new, delete
-    Grid<ProvisioningToken> provisioningTokens = new Grid<>(ProvisioningToken.class);
-    Button addProvisioningTokenButton = new Button("Add provisioning token");
-    // TODO list of devices, create new, delete
-
-    Button save = new Button("Save");
-    Button delete = new Button("Delete");
-    Button close = new Button ("Cancel");
-
-    BeanValidationBinder<Project> binder = new BeanValidationBinder<>(Project.class);
-
     public ProjectForm(IotService service) {
-        this.service = service;
-        addClassName("project-form");
+        //super(Project.class);
+        this.modelClass = Project.class;
+        addClassName("generic-form");
+        setResponsiveSteps(new ResponsiveStep("0", 1));
+        binder = new BeanValidationBinder<>(modelClass);
         binder.bindInstanceFields(this);
+
+        this.service = service;
         createdAt.setReadOnly(true);
         updatedAt.setReadOnly(true);
-        provisioningTokens.setColumns();
-        provisioningTokens.addColumn("token")
-                .setTooltipGenerator(item -> item.getToken())
-                .setHeader("Token");
-        provisioningTokens.addColumn(new InstantRenderer<>(ProvisioningToken::getExpiresAt))
-                .setTooltipGenerator(item -> item.getExpiresAt().toString())
-                .setHeader("Expires")
-                .setAutoWidth(true);
-        provisioningTokens.addComponentColumn(item -> new Button(new Icon(VaadinIcon.CLIPBOARD), click -> {
-            ClientsideClipboard.writeToClipboard(item.getToken());
-        }))
-                .setTooltipGenerator(item -> "Copy token to clipboard")
-                .setAutoWidth(true);
-        provisioningTokens.addComponentColumn(item -> new Button(new Icon(VaadinIcon.TRASH),click -> {
-            item.getProject().getProvisioningTokens().remove(item);
-            provisioningTokens.setItems(item.getProject().getProvisioningTokens());
-        }))
-                .setTooltipGenerator(item -> "Delete token")
-                .setAutoWidth(true);
 
-        provisioningTokens.setAllRowsVisible(true);
-        addProvisioningTokenButton.addClickListener(event -> {
-            if (binder.getBean() != null) {
-                Project project = binder.getBean();
-                service.addProvisioningToken(project);
-                provisioningTokens.setItems(project.getProvisioningTokens());
-            }
-        });
+        H2 header = new H2("Project");
+        Section sectionHeader = new Section(header);
+        sectionHeader.setClassName("generic-form-header");
+        add(sectionHeader);
 
-        add(name, description, tags, createdAt, updatedAt,
-                autocreateDevices, provisioningAutoapproval,
-                defaultProvisioningTokenLength, defaultProvisioningTokenExpiresInSeconds,
-                defaultDeviceTokenLength, defaultDeviceTokenExpiresInSeconds,
-                provisioningTokens,
-                addProvisioningTokenButton,
-                createButtonsLayout());
+        H3 sectionGeneralTitle = new H3("General settings");
+        VerticalLayout sectionGeneral = new VerticalLayout(sectionGeneralTitle, name, description, tags, createdAt, updatedAt);
+        sectionGeneral.setClassName("generic-form-main");
+        add(sectionGeneral);
+
+        H3 sectionSpecificTitle = new H3("Specific settings");
+        VerticalLayout sectionSpecific = new VerticalLayout(sectionSpecificTitle, autocreateDevices, provisioningAutoapproval);
+        sectionSpecific.setClassName("generic-form-main");
+        add(sectionSpecific);
+
+        VerticalLayout sectionButtons = new VerticalLayout(createButtonsLayout());
+        sectionButtons.setClassName("generic-form-footer");
+        add(sectionButtons);
     }
 
-    public void setProject(Project project) {
-        binder.setBean(project);
-        if (project == null) {
-            provisioningTokens.setItems(new LinkedList<>());
-        } else {
-            provisioningTokens.setItems(project.getProvisioningTokens());
-        }
-    }
+    protected HorizontalLayout createButtonsLayout() {
+        HorizontalLayout buttonLayout = new HorizontalLayout();
 
-    private HorizontalLayout createButtonsLayout() {
+        reset.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        reset.addClickShortcut(Key.ESCAPE);
+        reset.addClickListener(event -> binder.readBean(item));
+        buttonLayout.add(reset);
+
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
-        close.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-
         save.addClickShortcut(Key.ENTER);
-        close.addClickShortcut(Key.ESCAPE);
-
         save.addClickListener(event -> validateAndSave());
-        delete.addClickListener(event -> fireEvent(new DeleteEvent(this, binder.getBean())));
-        close.addClickListener(event -> fireEvent(new CloseEvent(this)));
-
         binder.addStatusChangeListener(e -> save.setEnabled(binder.isValid()));
-        return new HorizontalLayout(save, delete, close);
+        buttonLayout.add(save);
+
+        return buttonLayout;
     }
 
-    private void validateAndSave() {
-        if (binder.isValid()) {
-            fireEvent(new SaveEvent(this, binder.getBean()));
+    public void populateForm(Project item) {
+        this.item = item;
+        binder.readBean(item);
+    }
+
+    protected void validateAndSave() {
+        if (binder.writeBeanIfValid(item)) {
+            try {
+                item = save(item);
+                if (item != null) {
+                    Notification.show("Item saved");
+                    populateForm(item);
+                } else {
+                    Notification.show("Failure saving item").addThemeVariants(NotificationVariant.LUMO_ERROR);
+                }
+            } catch (Exception e) {
+                log.error("Error saving item: {}", e.getMessage());
+                Notification.show("Failure saving item: " + e.getMessage()).addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        } else {
+            Notification.show("Failure saving item: Validation failed");
         }
     }
 
-    public static abstract class ProjectFormEvent extends ComponentEvent<ProjectForm> {
-        private final Project project;
-
-        protected ProjectFormEvent(ProjectForm source, Project project) {
-            super(source, false);
-            this.project = project;
-        }
-
-        public Project getProject() {
-            return project;
-        }
+    protected Project save(Project item) {
+        return service.updateProject(item);
     }
 
-    public static class SaveEvent extends ProjectFormEvent {
-        SaveEvent(ProjectForm source, Project project) {
-            super(source, project);
-        }
-    }
-
-    public static class DeleteEvent extends ProjectFormEvent {
-        DeleteEvent(ProjectForm source, Project project) {
-            super(source, project);
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        Optional<Long> id = event.getRouteParameters().getLong(ID_ROUTING_PARAM);
+        if (id.isPresent()) {
+            Optional<Project> item = service.findProjectById(id.get());
+            if (item.isPresent()) {
+                populateForm(item.get());
+            } else {
+                Notification.show("The requested item was not found, id=" + id.get());
+                populateForm(null);
+            }
+        } else {
+            log.error("Invalid route parameter, expected projectId");
+            populateForm(null);
         }
     }
 
-    public static class CloseEvent extends ProjectFormEvent {
-        CloseEvent(ProjectForm source) {
-            super(source, null);
-        }
-    }
-
-    public Registration addDeleteListener(ComponentEventListener<DeleteEvent> listener) {
-        return addListener(DeleteEvent.class, listener);
-    }
-
-    public Registration addSaveListener(ComponentEventListener<SaveEvent> listener) {
-        return addListener(SaveEvent.class, listener);
-    }
-
-    public Registration addCloseListener(ComponentEventListener<CloseEvent> listener) {
-        return addListener(CloseEvent.class, listener);
-    }
 }

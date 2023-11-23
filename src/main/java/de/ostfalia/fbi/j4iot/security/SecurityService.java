@@ -3,6 +3,11 @@ package de.ostfalia.fbi.j4iot.security;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import de.ostfalia.fbi.j4iot.data.entity.User;
 import de.ostfalia.fbi.j4iot.data.repository.UserRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.authentication.AuthenticationEventPublisher;
+import org.springframework.security.authentication.DefaultAuthenticationEventPublisher;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -50,5 +55,11 @@ public class SecurityService {
 
     public void logout() {
         authenticationContext.logout();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(AuthenticationEventPublisher.class)
+    DefaultAuthenticationEventPublisher defaultAuthenticationEventPublisher(ApplicationEventPublisher delegate) {
+        return new DefaultAuthenticationEventPublisher(delegate);
     }
 }

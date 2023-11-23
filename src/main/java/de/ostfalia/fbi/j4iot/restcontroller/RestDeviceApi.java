@@ -1,4 +1,4 @@
-package de.ostfalia.fbi.j4iot.restservice;
+package de.ostfalia.fbi.j4iot.restcontroller;
 
 import de.ostfalia.fbi.j4iot.data.service.IotService;
 import elemental.json.Json;

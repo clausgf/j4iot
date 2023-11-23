@@ -1,0 +1,32 @@
+.generic-form {
+  display: flex;
+  flex-direction: column;
+  width: 400px;
+}
+
+.generic-form .generic-form-main {
+  flex-grow: 1;
+  padding: var(--lumo-space-l);
+}
+
+.generic-form .generic-form-header {
+  width: 100%;
+  flex-wrap: wrap;
+  background-color: var(--lumo-contrast-5pct);
+  padding-bottom: var(--lumo-space-l);
+  padding-top: var(--lumo-space-l);
+  padding-left: var(--lumo-space-l);
+  padding-right: var(--lumo-space-l);
+  gap: var(--lumo-space-m);
+}
+
+.generic-form .generic-form-footer {
+  width: 100%;
+  flex-wrap: wrap;
+  background-color: var(--lumo-contrast-5pct);
+  padding-bottom: var(--lumo-space-l);
+  padding-top: var(--lumo-space-l);
+  padding-left: var(--lumo-space-l);
+  padding-right: var(--lumo-space-l);
+  gap: var(--lumo-space-m);
+}

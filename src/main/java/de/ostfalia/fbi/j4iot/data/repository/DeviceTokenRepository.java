@@ -6,7 +6,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
-public interface AccessTokenRepository extends JpaRepository<DeviceToken, Long> {
+public interface DeviceTokenRepository extends JpaRepository<DeviceToken, Long> {
     //@Query("select d.name from Device d")
     //List<ProvisioningToken> findAll();
 

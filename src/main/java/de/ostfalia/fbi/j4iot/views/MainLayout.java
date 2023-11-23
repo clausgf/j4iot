@@ -36,7 +36,6 @@ import de.ostfalia.fbi.j4iot.security.SecurityService;
 import de.ostfalia.fbi.j4iot.views.about.AboutView;
 import de.ostfalia.fbi.j4iot.views.device.DeviceDashboard;
 import de.ostfalia.fbi.j4iot.views.device.DeviceList;
-import de.ostfalia.fbi.j4iot.views.project.ProjectOverview;
 import de.ostfalia.fbi.j4iot.views.project.ProjectList;
 import de.ostfalia.fbi.j4iot.views.user.UserMasterDetail;
 import org.slf4j.Logger;
@@ -64,11 +63,11 @@ public class MainLayout extends AppLayout {
     private final Dialog passwordChangeDialog = createPasswordChangeDialog();
     ComboBox<String> projectSelection = new ComboBox<>();
     ComboBox<String> deviceSelection = new ComboBox<>();
-    SideNavItem navItemProjectDevices = new SideNavItem("Devices in project", ProjectOverview.class, LineAwesomeIcon.MICROCHIP_SOLID.create());
-    SideNavItem navItemProjectDashboard = new SideNavItem("Project dashboard", ProjectOverview.class, LineAwesomeIcon.TACHOMETER_ALT_SOLID.create());
-    SideNavItem navItemProjectSettings = new SideNavItem("Project settings", ProjectOverview.class, LineAwesomeIcon.COG_SOLID.create());
-    SideNavItem navItemDeviceDashboard = new SideNavItem("Device dashboard", ProjectOverview.class, LineAwesomeIcon.TACHOMETER_ALT_SOLID.create());
-    SideNavItem navItemDeviceSettings = new SideNavItem("Device settings", ProjectOverview.class, LineAwesomeIcon.COG_SOLID.create());
+    SideNavItem navItemProjectDevices = new SideNavItem("Devices in project", DefaultView.class, LineAwesomeIcon.MICROCHIP_SOLID.create());
+    SideNavItem navItemProjectDashboard = new SideNavItem("Project dashboard", DefaultView.class, LineAwesomeIcon.TACHOMETER_ALT_SOLID.create());
+    SideNavItem navItemProjectSettings = new SideNavItem("Project settings", DefaultView.class, LineAwesomeIcon.COG_SOLID.create());
+    SideNavItem navItemDeviceDashboard = new SideNavItem("Device dashboard", DefaultView.class, LineAwesomeIcon.TACHOMETER_ALT_SOLID.create());
+    SideNavItem navItemDeviceSettings = new SideNavItem("Device settings", DefaultView.class, LineAwesomeIcon.COG_SOLID.create());
 
 
     public MainLayout(SecurityService securityService, IotService iotService, UserService userService) {
@@ -246,14 +245,14 @@ public class MainLayout extends AppLayout {
         }
 
         navItemProjectDevices.setPath(DeviceList.class, projectRp);
-        navItemProjectDashboard.setPath(ProjectOverview.class);
-        navItemProjectSettings.setPath(ProjectOverview.class);
+        navItemProjectDashboard.setPath(DefaultView.class);
+        navItemProjectSettings.setPath(DefaultView.class);
 
         navItemDeviceDashboard.setPath(DeviceDashboard.class, deviceRp);
-        navItemDeviceSettings.setPath(ProjectOverview.class);
+        navItemDeviceSettings.setPath(DefaultView.class);
     }
 
-    private void setProjectName(String newProjectName) {
+    public void setProjectName(String newProjectName) {
         if (newProjectName == null || !iotService.projectExistsByName(newProjectName))
         { // project is null or does not exist: reset project and device selection
             projectName = null;
@@ -268,7 +267,7 @@ public class MainLayout extends AppLayout {
         }
     }
 
-    private void setDeviceName(String newDeviceName) {
+    public void setDeviceName(String newDeviceName) {
         boolean projectExists = (projectName != null) && iotService.projectExistsByName(projectName);
         boolean deviceExists = projectExists && (deviceName != null) && iotService.deviceExistsByProjectNameAndDeviceName(projectName, newDeviceName);
         if (!projectExists) {
@@ -298,8 +297,8 @@ public class MainLayout extends AppLayout {
         String title = titleAnnotation == null ? "" : titleAnnotation.value();
         if (titleAnnotation == null) {
             Component c = getContent();
-            if (HasDynamicTitle.class.isInstance(c)) {
-                title = ((HasDynamicTitle) c).getPageTitle();
+            if (c instanceof HasDynamicTitle componentWithDynamicTitle) {
+                title = componentWithDynamicTitle.getPageTitle();
             }
         }
         return title;

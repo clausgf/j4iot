@@ -1,12 +1,12 @@
-package de.ostfalia.fbi.j4iot.views.genericprojectlist;
+package de.ostfalia.fbi.j4iot.views.legacy.genericprojectlist;
 
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
 import de.ostfalia.fbi.j4iot.data.service.IotService;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
-import de.ostfalia.fbi.j4iot.views.generic.GenericListView;
-import de.ostfalia.fbi.j4iot.views.project.ProjectForm;
+import de.ostfalia.fbi.j4iot.views.legacy.generic.GenericListView;
+import de.ostfalia.fbi.j4iot.views.legacy.ProjectForm;
 import jakarta.annotation.security.PermitAll;
 
 // TODO base this list on a generic one

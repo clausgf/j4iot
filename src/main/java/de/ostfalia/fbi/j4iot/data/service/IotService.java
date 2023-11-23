@@ -10,18 +10,19 @@
 
 package de.ostfalia.fbi.j4iot.data.service;
 
-import de.ostfalia.fbi.j4iot.data.entity.DeviceToken;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
+import de.ostfalia.fbi.j4iot.data.entity.DeviceToken;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
 import de.ostfalia.fbi.j4iot.data.entity.ProvisioningToken;
-import de.ostfalia.fbi.j4iot.data.repository.AccessTokenRepository;
 import de.ostfalia.fbi.j4iot.data.repository.DeviceRepository;
+import de.ostfalia.fbi.j4iot.data.repository.DeviceTokenRepository;
 import de.ostfalia.fbi.j4iot.data.repository.ProjectRepository;
 import de.ostfalia.fbi.j4iot.data.repository.ProvisioningTokenRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
@@ -38,18 +39,18 @@ public class IotService {
     private final ProjectRepository projectRepository;
     private final DeviceRepository deviceRepository;
     private final ProvisioningTokenRepository provisioningTokenRepository;
-    private final AccessTokenRepository accessTokenRepository;
+    private final DeviceTokenRepository deviceTokenRepository;
 
     private static final SecureRandom secureRandom = new SecureRandom();
     private static final Base64.Encoder base64Encoder = Base64.getUrlEncoder();
 
     // ************************************************************************
 
-    public IotService(ProjectRepository projectRepository, DeviceRepository deviceRepository, ProvisioningTokenRepository provisioningTokenRepository, AccessTokenRepository accessTokenRepository) {
+    public IotService(ProjectRepository projectRepository, DeviceRepository deviceRepository, ProvisioningTokenRepository provisioningTokenRepository, DeviceTokenRepository deviceTokenRepository) {
         this.projectRepository = projectRepository;
         this.deviceRepository = deviceRepository;
         this.provisioningTokenRepository = provisioningTokenRepository;
-        this.accessTokenRepository = accessTokenRepository;
+        this.deviceTokenRepository = deviceTokenRepository;
     }
 
     // ************************************************************************
@@ -69,14 +70,27 @@ public class IotService {
         return projectRepository.searchAllNames(stringFilter);
     }
 
-    public Optional<Project> findProjectByName(String name) {
+    public Optional<Project> findProjectById(Long id) {
+        return projectRepository.findById(id);
+    }
+
+    /*public Optional<Project> findProjectByName(String name) {
         return projectRepository.findOneByName(name);
+    }*/
+
+    public long countDevicesInProject(Project project) {
+        return deviceRepository.countByProjectId(project.getId());
     }
 
     public Boolean projectExistsByName(String name) { return projectRepository.existsByName(name); }
 
+    @Transactional
     public void deleteProject(Project project) {
+        // TODO make sure to delete really everything, might need to add some cascading
+        Long projectId = project.getId();
+        project = projectRepository.findById(projectId).orElseThrow( () -> new RuntimeException("Project to delete id=" + projectId.toString() + " not found") );
         provisioningTokenRepository.deleteAll(project.getProvisioningTokens());
+        deviceRepository.deleteAll(project.getDevices());
         projectRepository.delete(project);
     }
 
@@ -138,8 +152,8 @@ public class IotService {
         return deviceRepository.searchAllNamesByProjectName(projectName, stringFilter);
     }
 
-    public Optional<Device> findOneByProjectAndName(Project project, String deviceName) {
-        return deviceRepository.findOneByProjectAndName(project, deviceName);
+    public Optional<Device> findDeviceByProjectNameAndName(String projectName, String deviceName) {
+        return deviceRepository.findOneByProjectNameAndName(projectName, deviceName);
     }
 
     public Boolean deviceExistsByProjectNameAndDeviceName(String projectName, String deviceName) { return deviceRepository.existsByProjectNameAndDeviceName(projectName, deviceName); }
@@ -191,7 +205,7 @@ public class IotService {
 
     public DeviceToken addDeviceToken(ProvisioningToken provisioningToken, Device device) {
         Project project = provisioningToken.getProject();
-        String prefix = String.format("D-%s%d-%s%d-", project.getName(), project.getId(), device.getName(), device.getId());
+        String prefix = String.format("D-%d-%d-", project.getId(), device.getId());
         byte[] randomBytes = new byte[project.getDefaultDeviceTokenLength()];
         secureRandom.nextBytes(randomBytes);
         String tokenValue = base64Encoder.encodeToString(prefix.getBytes()) + base64Encoder.encodeToString(randomBytes);
@@ -206,7 +220,30 @@ public class IotService {
 
     public DeviceToken createDeviceToken(ProvisioningToken provisioningToken, Device device) {
         DeviceToken deviceToken = addDeviceToken(provisioningToken, device);
-        return accessTokenRepository.save(deviceToken);
+        return deviceTokenRepository.save(deviceToken);
+    }
+
+    /**
+     * Return authenticated DeviceToken on success or null on authentication failure
+     */
+    public DeviceToken authenticateDeviceToken(String token) {
+        Optional<DeviceToken> deviceTokenOptional = deviceTokenRepository.findOneByToken(token);
+        if (deviceTokenOptional.isEmpty()) {
+            String msg = String.format("Not found device token '%s'", token);
+            log.info(msg);
+            return null;
+        }
+
+        DeviceToken deviceToken = deviceTokenOptional.get();
+        deviceToken.setLastUseAt(Instant.now());
+        deviceToken = deviceTokenRepository.save(deviceToken);
+
+        if (deviceToken.getExpiresAt().isBefore(Instant.now())) {
+            String msg = String.format("Expired device token '%s'", deviceToken);
+            log.info(msg);
+            return null;
+        }
+        return deviceToken;
     }
 
     // ************************************************************************
@@ -287,31 +324,15 @@ public class IotService {
         provisioningToken = checkProvisioningTokenValid(project, provisioningTokenStr);
         device.setLastProvisionedAt(Instant.now());
         device = deviceRepository.save(device);
-        log.info("project='{}' device='{} provisioningToken='{}' ok", projectName, deviceName, provisioningTokenStr);
+        log.info("provision project='{}' device='{} provisioningToken='{}' ok", projectName, deviceName, provisioningTokenStr);
 
         DeviceToken deviceToken = createDeviceToken(provisioningToken, device);
         deviceToken.setLastUseAt(Instant.now());
-        deviceToken = accessTokenRepository.save(deviceToken);
+        deviceToken = deviceTokenRepository.save(deviceToken);
 
         return deviceToken.getToken();
     }
 
     // ************************************************************************
-
-    public Optional<DeviceToken> findAccessToken(String accessTokenStr) {
-        return accessTokenRepository.findOneByToken(accessTokenStr);
-    }
-
-    public Boolean isAccessTokenOk(String accessTokenStr) {
-        Optional<DeviceToken> optToken = accessTokenRepository.findOneByToken(accessTokenStr);
-        if (optToken.isEmpty()) {
-            log.info("Access token not found: {}", accessTokenStr);
-            return false;
-        }
-        return true;
-    }
-
-    // ************************************************************************
-
 
 }

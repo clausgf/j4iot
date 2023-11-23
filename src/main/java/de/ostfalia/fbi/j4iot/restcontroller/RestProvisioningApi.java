@@ -1,4 +1,4 @@
-package de.ostfalia.fbi.j4iot.restservice;
+package de.ostfalia.fbi.j4iot.restcontroller;
 
 import de.ostfalia.fbi.j4iot.data.service.IotService;
 import jakarta.annotation.security.PermitAll;
@@ -13,16 +13,20 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping(value = "/api")
 public class RestProvisioningApi {
 
-    Logger log = LoggerFactory.getLogger(RestProvisioningApi.class);
-    IotService iotService;
+    private final Logger log = LoggerFactory.getLogger(RestProvisioningApi.class);
+    private final IotService iotService;
 
-    public record ProvisioningRequest (String projectName, String  deviceName, String provisioningToken) {}
-    public record ProvisioningResponse (String bearer, String accessToken) {}
+    RestProvisioningApi(IotService iotService) {
+        this.iotService = iotService;
+    }
 
     @GetMapping("/hello")
     public String hello() {
         return "Hello world!";
     }
+
+    public record ProvisioningRequest (String projectName, String  deviceName, String provisioningToken) {}
+    public record ProvisioningResponse (String bearer, String accessToken) {}
 
     @PermitAll
     @PostMapping(value = "/provision", produces = MediaType.APPLICATION_JSON_VALUE)

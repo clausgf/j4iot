@@ -3,85 +3,43 @@ package de.ostfalia.fbi.j4iot.views.project;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.orderedlayout.Scroller;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteParam;
 import com.vaadin.flow.router.RouteParameters;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
 import de.ostfalia.fbi.j4iot.data.service.IotService;
+import de.ostfalia.fbi.j4iot.views.GenericList;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
 import de.ostfalia.fbi.j4iot.views.device.DeviceList;
 import jakarta.annotation.security.PermitAll;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.vaadin.lineawesome.LineAwesomeIcon;
+
+import java.util.Optional;
 
 // TODO base this list on a generic one
 @PermitAll
 @Route(value="/projects", layout = MainLayout.class)
 @PageTitle("Projects")
-public class ProjectList extends VerticalLayout {
+public class ProjectList extends GenericList<Project> {
 
-    public final static String PROJECT_NAME_RP = "projectName";
-
-    Grid<Project> grid = new Grid<>(Project.class);
-    TextField filterText = new TextField();
-    Scroller scroller = new Scroller();
-    ProjectForm form;
-    IotService service;
+    public final static String ID_ROUTING_PARAMETER = "id";
+    private Logger log = LoggerFactory.getLogger(ProjectList.class);
+    private final IotService service;
 
     public ProjectList(IotService service) {
+        super(Project.class);
         this.service = service;
-        addClassName("project-list-view");
-        setSizeFull();
-        configureGrid();
-        form = new ProjectForm(service);
-        configureForm();
-        add(getToolbar(), getContent());
-        updateList();
-        closeEditor();
+        updateItems();
     }
 
-    private Component getContent() {
-        scroller.setContent(form);
-        HorizontalLayout content = new HorizontalLayout(grid, scroller);
-        content.setFlexGrow(2, grid);
-        content.setFlexGrow(1, form);
-        content.addClassNames("content");
-        content.setSizeFull();
-        return content;
-    }
-
-    private void configureForm() {
-        form.setWidth("25em");
-        form.addSaveListener(this::saveProject);
-        form.addDeleteListener(this::deleteProject);
-        form.addCloseListener(e->closeEditor());
-    }
-
-    private void saveProject(ProjectForm.SaveEvent event) {
-        service.updateProject(event.getProject());
-        updateList();
-        closeEditor();
-    }
-
-    private void deleteProject(ProjectForm.DeleteEvent event) {
-        service.deleteProject(event.getProject());
-        updateList();
-        closeEditor();
-    }
-
-    private void configureGrid() {
-        grid.addClassNames("project-grid");
-        grid.setSizeFull();
+    @Override
+    protected void configureGrid() {
         grid.setColumns();
-        grid.addComponentColumn(item -> new Button(LineAwesomeIcon.LINK_SOLID.create(), click -> {
-            RouteParameters rp = new RouteParameters(new RouteParam(PROJECT_NAME_RP, item.getName()));
-            UI.getCurrent().navigate(DeviceList.class, rp);
+        grid.addComponentColumn(project -> new Button(LineAwesomeIcon.LINK_SOLID.create(), click -> {
+            onNavigateToDevices(project);
         })).setHeader("Devices");
         grid.addColumns("name", "tags", "autocreateDevices", "provisioningAutoapproval");
         //grid.addColumn(new InstantRenderer<>(Project::getCreatedAt)).setHeader("Created");
@@ -89,49 +47,66 @@ public class ProjectList extends VerticalLayout {
         // TODO add number of provisioning tokens (linking to some editor?)
         // TODO add number of devices (linking to some editor?)
         // TODO render tags as badges with color code
-        // TODO add an edit button
-        // TODO add a delete button
-        grid.getColumns().forEach(col -> col.setAutoWidth(true));
-
-        grid.asSingleSelect().addValueChangeListener(event -> editProject(event.getValue()));
+        super.configureGrid(); // call the base class method at the end to allow further modifications
     }
 
-    private HorizontalLayout getToolbar() {
-        filterText.setPlaceholder("Filter by name or tag");
-        filterText.setClearButtonVisible(true);
-        filterText.setValueChangeMode(ValueChangeMode.LAZY);
-        filterText.addValueChangeListener(e -> updateList());
-
-        Button addProjectButton = new Button("Add project");
-        addProjectButton.addClickListener(click -> addProject());
-
-        var toolbar = new HorizontalLayout(filterText, addProjectButton);
-        toolbar.addClassName("toolbar");
-        return toolbar;
+    @Override
+    protected void confirmDeleteItem(Project item) {
+        confirmDeleteDialog.setHeader("Danger: Delete Project " + item.getName());
+        String msg = String.format("Do you really want to project %s containing %s devices?", item.getName(), service.countDevicesInProject(item));
+        confirmDeleteDialog.setText(msg);
+        super.confirmDeleteItem(item);
     }
 
-    public void editProject(Project project) {
-        if (project == null) {
-            closeEditor();
+    @Override
+    protected boolean addItem() {
+        return false;
+    }
+
+    @Override
+    protected void editItem(Project item) {
+        setMainLayoutProject(item);
+        RouteParameters rp = new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, item.getId()));
+        UI.getCurrent().navigate(ProjectForm.class, rp);
+    }
+
+    @Override
+    protected boolean removeItem(Project item) {
+        try {
+            service.deleteProject(item);
+        } catch (Exception e) {
+            log.error("Error in removeItem(Project id={} name={}): {}", item.getId(), item.getName(), e.getMessage());
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    protected void updateItems() {
+        if (service == null) {
+            grid.setItems();
         } else {
-            form.setProject(project);
-            form.setVisible(true);
-            addClassName("editing");
+            grid.setItems(service.findAllProjects(filterText.getValue()));
         }
     }
 
-    private void closeEditor() {
-        form.setProject(null);
-        form.setVisible(false);
-        removeClassName("editing");
+    private void onNavigateToDevices(Project project)
+    {
+        setMainLayoutProject(project);
+        RouteParameters rp = new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, project.getId()));
+        UI.getCurrent().navigate(DeviceList.class, rp);
     }
 
-    private void addProject() {
-        grid.asSingleSelect().clear();
-        editProject(new Project());
-    }
-
-    private void updateList() {
-        grid.setItems(service.findAllProjects(filterText.getValue()));
+    private void setMainLayoutProject(Project project) {
+        Optional<Component> parent = getParent();
+        if (parent.isPresent()) {
+            if (parent.get() instanceof MainLayout m) {
+                log.info("parent is present and a MainLayout");
+                m.setProjectName(project.getName()); // TODO
+            }
+            log.info("parent is present");
+        } else {
+            log.info("ProjectList has no parent");
+        }
     }
 }

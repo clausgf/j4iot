@@ -1,4 +1,4 @@
-package de.ostfalia.fbi.j4iot.views.generic;
+package de.ostfalia.fbi.j4iot.views.legacy.generic;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;

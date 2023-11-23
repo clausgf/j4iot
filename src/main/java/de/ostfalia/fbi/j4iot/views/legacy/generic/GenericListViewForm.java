@@ -1,4 +1,4 @@
-package de.ostfalia.fbi.j4iot.views.generic;
+package de.ostfalia.fbi.j4iot.views.legacy.generic;
 
 import com.vaadin.flow.component.ComponentEvent;
 import com.vaadin.flow.component.ComponentEventListener;
@@ -10,7 +10,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.shared.Registration;
 import de.ostfalia.fbi.j4iot.data.entity.AbstractEntity;
-import de.ostfalia.fbi.j4iot.views.genericprojectlist.GenericProjectForm;
+import de.ostfalia.fbi.j4iot.views.legacy.genericprojectlist.GenericProjectForm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
