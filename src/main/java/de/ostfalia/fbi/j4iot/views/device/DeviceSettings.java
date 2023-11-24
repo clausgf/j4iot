@@ -1,26 +1,17 @@
 package de.ostfalia.fbi.j4iot.views.device;
 
-import com.vaadin.flow.component.Component;
-import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
-import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.H3;
-import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.router.*;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
 import de.ostfalia.fbi.j4iot.data.entity.DeviceToken;
@@ -40,18 +31,9 @@ import java.util.Optional;
 @PermitAll
 @PageTitle("Device settings")
 @Route(value="/devices/:id/settings", layout = MainLayout.class)
-public class DeviceSettings extends GenericForm<Device> implements BeforeEnterObserver, AfterNavigationObserver {
+public class DeviceSettings extends GenericForm<Device> implements BeforeEnterObserver {
 
     private Logger log = LoggerFactory.getLogger(DeviceSettings.class);
-    protected final Class<Device> modelClass;
-    protected RouteParameters routeParameters = null;
-
-    protected Button resetButton = new Button ("Reset");
-    protected Button saveButton = new Button("Save");
-
-    protected Device item;
-    protected BeanValidationBinder<Device> binder;
-
     public final static String ID_ROUTING_PARAMETER = "id";
     IotService service;
 
@@ -87,15 +69,10 @@ public class DeviceSettings extends GenericForm<Device> implements BeforeEnterOb
 
     public DeviceSettings(IotService service) {
         super(Device.class);
-        this.modelClass = Device.class;
-        addClassName("generic-form");
-        binder = new BeanValidationBinder<>(modelClass);
         binder.bindInstanceFields(this);
-
         this.service = service;
 
-        addClassName("generic-form");
-        addHeader("Device");
+        //addHeader("Device");
         FormLayout main = addForm();
         Arrays.asList(createdAt, updatedAt, lastProvisioningRequestAt, lastProvisionedAt, lastSeenAt).forEach(e -> e.setReadOnly(true));
         Arrays.asList(name, description, tags, location).forEach(e -> main.setColspan(e, 2));
@@ -138,56 +115,9 @@ public class DeviceSettings extends GenericForm<Device> implements BeforeEnterOb
         addFooter();
     }
 
-    protected void addHeader(String title) {
-        H3 header = new H3(title);
-        header.addClassName("generic-form-header");
-        add(header);
-        //setColspan(header, 2);
-    }
-
-    protected FormLayout addForm() {
-        Div main = new Div();
-        main.addClassName("generic-form-main");
-        add(main);
-        FormLayout formLayout= new FormLayout();
-        main.add(formLayout);
-        return formLayout;
-    }
-
-    protected void addSectionTo(FormLayout form, String title, Component... components) {
-        if (title != null && !title.isEmpty()) {
-            H4 sectionTitle = new H4(title);
-            form.addClassName("generic-form-section-title");
-            form.add(sectionTitle);
-            form.setColspan(sectionTitle, 2);
-        }
-        Arrays.asList(components).forEach(e -> {
-            e.addClassName("generic-form-element");
-        });
-        form.add(components);
-    }
-
-    protected void addFooter() {
-        HorizontalLayout buttonLayout = new HorizontalLayout();
-
-        resetButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        resetButton.addClickShortcut(Key.ESCAPE);
-        resetButton.addClickListener(event -> binder.readBean(item));
-        buttonLayout.add(resetButton);
-
-        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        saveButton.addClickShortcut(Key.ENTER);
-        saveButton.addClickListener(event -> validateAndSave());
-        binder.addStatusChangeListener(e -> saveButton.setEnabled(binder.isValid()));
-        buttonLayout.add(saveButton);
-
-        buttonLayout.addClassName("generic-form-footer");
-        add(buttonLayout);
-    }
-
-    public void populateForm(Device item) {
-        this.item = item;
-        binder.readBean(item);
+    @Override
+    protected void populateForm(Device item) {
+        super.populateForm(item);
         if (item == null) {
             deviceTokens.setItems(new LinkedList<>());
         } else {
@@ -196,60 +126,19 @@ public class DeviceSettings extends GenericForm<Device> implements BeforeEnterOb
         withMainLayout(m -> m.setCurrentDevice(item));
     }
 
-    protected void validateAndSave() {
-        if (binder.writeBeanIfValid(item)) {
-            try {
-                item = save(item);
-                if (item != null) {
-                    Notification.show("Item saved");
-                    populateForm(item);
-                } else {
-                    Notification.show("Failure saving item").addThemeVariants(NotificationVariant.LUMO_ERROR);
-                }
-            } catch (Exception e) {
-                log.error("Error saving item: {}", e.getMessage());
-                Notification.show("Failure saving item: " + e.getMessage()).addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        } else {
-            Notification.show("Failure saving item: Validation failed");
-        }
-    }
-
+    @Override
     protected Device save(Device item) {
         return service.updateDevice(item);
     }
 
+    @Override
     protected Optional<Device> load(Long id) {
         return service.findDeviceById(id);
     }
 
-    // BaseClass
-    //@Override
-    public void _beforeEnter(BeforeEnterEvent event) {
-        routeParameters = event.getRouteParameters();
-    }
-
-    // BaseClass
-    @FunctionalInterface
-    protected interface WithMainLayout { void execute(MainLayout m); }
-
-    // BaseClass
-    protected void withMainLayout(WithMainLayout toExecute) {
-        Optional<Component> parent = getParent();
-        if (parent.isPresent()) {
-            if (parent.get() instanceof MainLayout m) {
-                toExecute.execute(m);
-            } else {
-                log.error("withMainLayout: found a parent which is not a MainLayout");
-            }
-        } else {
-            log.error("withMainLayout: parent not found");
-        }
-    }
-
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        _beforeEnter(event);
+        super.beforeEnter(event);
         item = null;
         Optional<Long> id = routeParameters.getLong(ID_ROUTING_PARAMETER);
         if (id.isPresent()) {
@@ -264,8 +153,4 @@ public class DeviceSettings extends GenericForm<Device> implements BeforeEnterOb
         }
     }
 
-    @Override
-    public void afterNavigation(AfterNavigationEvent event) {
-        populateForm(item);
-    }
 }

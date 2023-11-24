@@ -115,7 +115,6 @@ public class MainLayout extends AppLayout {
     private void configureProjectSelection(ComboBox<String> projectSelection, ComboBox<String> deviceSelection) {
         projectSelection.setPlaceholder("Project");
         projectSelection.setTooltipText("Select the active project");
-        projectSelection.setClearButtonVisible(true);
         projectSelection.setPrefixComponent(VaadinIcon.SEARCH.create());
         projectSelection.addFocusListener(comboBoxFocusEvent -> {
             updateProjectNames();
@@ -136,7 +135,6 @@ public class MainLayout extends AppLayout {
     private void configureDeviceSelection(ComboBox<String> deviceSelection) {
         deviceSelection.setPlaceholder("Device");
         deviceSelection.setTooltipText("Select the active device");
-        deviceSelection.setClearButtonVisible(true);
         deviceSelection.setPrefixComponent(VaadinIcon.SEARCH.create());
         deviceSelection.addFocusListener(comboBoxFocusEvent -> {
             updateDeviceNames();
