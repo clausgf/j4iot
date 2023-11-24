@@ -1,12 +1,11 @@
 package de.ostfalia.fbi.j4iot.views.project;
 
-import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.RouteParam;
-import com.vaadin.flow.router.RouteParameters;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
 import de.ostfalia.fbi.j4iot.data.service.IotService;
 import de.ostfalia.fbi.j4iot.views.GenericList;
@@ -16,8 +15,6 @@ import jakarta.annotation.security.PermitAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vaadin.lineawesome.LineAwesomeIcon;
-
-import java.util.Optional;
 
 // TODO base this list on a generic one
 @PermitAll
@@ -29,6 +26,12 @@ public class ProjectList extends GenericList<Project> {
     private Logger log = LoggerFactory.getLogger(ProjectList.class);
     private final IotService service;
 
+
+    public static void navigateTo() {
+        UI.getCurrent().navigate(ProjectList.class);
+    }
+
+
     public ProjectList(IotService service) {
         super(Project.class);
         this.service = service;
@@ -38,12 +41,21 @@ public class ProjectList extends GenericList<Project> {
     @Override
     protected void configureGrid() {
         grid.setColumns();
-        grid.addComponentColumn(project -> new Button(LineAwesomeIcon.LINK_SOLID.create(), click -> {
-            onNavigateToDevices(project);
-        })).setHeader("Devices");
-        grid.addColumns("name", "tags", "autocreateDevices", "provisioningAutoapproval");
-        //grid.addColumn(new InstantRenderer<>(Project::getCreatedAt)).setHeader("Created");
-        //grid.addColumn(new InstantRenderer<>(Project::getCreatedAt)).setHeader("Updated");
+        grid.addComponentColumn(project ->
+                new Button(LineAwesomeIcon.LINK_SOLID.create(), click -> {
+                    DeviceList.navigateToProject(project);
+                }))
+                .setTooltipGenerator(item -> "Navigate to device")
+                .setHeader("Devices").setFlexGrow(0);
+        grid.addColumns("name", "tags");
+        grid.addColumn(new ComponentRenderer<>(project -> {
+                    if (project.getAutocreateDevices()) { return VaadinIcon.CHECK_CIRCLE_O.create(); }
+                    else { return VaadinIcon.CIRCLE_THIN.create(); }
+                })).setHeader("Autocreate").setFlexGrow(0);
+        grid.addColumn(new ComponentRenderer<>(project -> {
+                    if (project.getProvisioningAutoapproval()) { return VaadinIcon.CHECK_CIRCLE_O.create(); }
+                    else { return VaadinIcon.CIRCLE_THIN.create(); }
+                })).setHeader("Autoprovision").setFlexGrow(0);
         // TODO add number of provisioning tokens (linking to some editor?)
         // TODO add number of devices (linking to some editor?)
         // TODO render tags as badges with color code
@@ -65,9 +77,7 @@ public class ProjectList extends GenericList<Project> {
 
     @Override
     protected void editItem(Project item) {
-        setMainLayoutProject(item);
-        RouteParameters rp = new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, item.getId()));
-        UI.getCurrent().navigate(ProjectForm.class, rp);
+        ProjectSettings.navigateToProject(item);
     }
 
     @Override
@@ -87,26 +97,6 @@ public class ProjectList extends GenericList<Project> {
             grid.setItems();
         } else {
             grid.setItems(service.findAllProjects(filterText.getValue()));
-        }
-    }
-
-    private void onNavigateToDevices(Project project)
-    {
-        setMainLayoutProject(project);
-        RouteParameters rp = new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, project.getId()));
-        UI.getCurrent().navigate(DeviceList.class, rp);
-    }
-
-    private void setMainLayoutProject(Project project) {
-        Optional<Component> parent = getParent();
-        if (parent.isPresent()) {
-            if (parent.get() instanceof MainLayout m) {
-                log.info("parent is present and a MainLayout");
-                m.setProjectName(project.getName()); // TODO
-            }
-            log.info("parent is present");
-        } else {
-            log.info("ProjectList has no parent");
         }
     }
 }

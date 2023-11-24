@@ -1,7 +1,6 @@
 package de.ostfalia.fbi.j4iot.views;
 
 import com.vaadin.flow.component.Component;
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.avatar.Avatar;
@@ -27,21 +26,25 @@ import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.RouteParam;
-import com.vaadin.flow.router.RouteParameters;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import de.ostfalia.fbi.j4iot.data.entity.Device;
+import de.ostfalia.fbi.j4iot.data.entity.Project;
 import de.ostfalia.fbi.j4iot.data.service.IotService;
 import de.ostfalia.fbi.j4iot.data.service.UserService;
 import de.ostfalia.fbi.j4iot.security.SecurityService;
 import de.ostfalia.fbi.j4iot.views.about.AboutView;
 import de.ostfalia.fbi.j4iot.views.device.DeviceDashboard;
 import de.ostfalia.fbi.j4iot.views.device.DeviceList;
+import de.ostfalia.fbi.j4iot.views.device.DeviceSettings;
 import de.ostfalia.fbi.j4iot.views.project.ProjectList;
+import de.ostfalia.fbi.j4iot.views.project.ProjectSettings;
 import de.ostfalia.fbi.j4iot.views.user.UserMasterDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.vaadin.lineawesome.LineAwesomeIcon;
+
+import java.util.Optional;
 
 /**
  * The main view is a top-level placeholder for other views.
@@ -53,11 +56,9 @@ public class MainLayout extends AppLayout {
     private final IotService iotService;
     private final UserService userService;
 
-    public final static String PROJECT_NAME_RP = "projectName";
-    public final static String DEVICE_NAME_RP = "deviceName";
-
-    private String projectName;
-    private String deviceName;
+    private Project currentProject;
+    private Device currentDevice;
+    private boolean isValueChangeEnabled = true;
 
     private H2 viewTitle;
     private final Dialog passwordChangeDialog = createPasswordChangeDialog();
@@ -74,14 +75,12 @@ public class MainLayout extends AppLayout {
         this.securityService = securityService;
         this.iotService = iotService;
         this.userService = userService;
-        this.projectName = null;
-        this.deviceName = null;
-        setNavItems();
+        this.currentProject = null;
+        this.currentDevice = null;
         setPrimarySection(Section.DRAWER);
         addHeaderContent();
         addDrawerContent();
-        setProjectName(null);
-        setDeviceName(null);
+        setCurrentProject(null);
     }
 
     private void addHeaderContent() {
@@ -119,12 +118,18 @@ public class MainLayout extends AppLayout {
         projectSelection.setClearButtonVisible(true);
         projectSelection.setPrefixComponent(VaadinIcon.SEARCH.create());
         projectSelection.addFocusListener(comboBoxFocusEvent -> {
-            projectSelection.setItems(iotService.findAllProjectNames(""));
+            updateProjectNames();
         });
         projectSelection.addValueChangeListener(comboBoxStringComponentValueChangeEvent -> {
-            //log.info("projectSelection old: project={} device={}", currentProject, currentDevice);
-            setProjectName(comboBoxStringComponentValueChangeEvent.getValue());
-            //log.info("projectSelection new: project={} device={}", currentProject, currentDevice);
+            if (isValueChangeEnabled) {
+                //log.info("projectSelection old: project={} device={}", currentProject, currentDevice);
+                isValueChangeEnabled = false;
+                String projectName = comboBoxStringComponentValueChangeEvent.getValue();
+                Optional<Project> project = iotService.findProjectByName(projectName);
+                setCurrentProject(project.orElse(null));
+                isValueChangeEnabled = true;
+                //log.info("projectSelection new: project={} device={}", currentProject, currentDevice);
+            }
         });
     }
 
@@ -134,16 +139,22 @@ public class MainLayout extends AppLayout {
         deviceSelection.setClearButtonVisible(true);
         deviceSelection.setPrefixComponent(VaadinIcon.SEARCH.create());
         deviceSelection.addFocusListener(comboBoxFocusEvent -> {
-            if (projectName != null) {
-                deviceSelection.setItems(iotService.searchAllDeviceNamesByProjectName(projectName, ""));
-            } else {
-                deviceSelection.setItems();
-            }
+            updateDeviceNames();
         });
         deviceSelection.addValueChangeListener(comboBoxStringComponentValueChangeEvent -> {
-            //log.info("deviceSelection old: project={} device={}", currentProject, currentDevice);
-            setDeviceName(comboBoxStringComponentValueChangeEvent.getValue());
-            //log.info("deviceSelection new: project={} device={}", currentProject, currentDevice);
+            if (isValueChangeEnabled) {
+                //log.info("deviceSelection old: project={} device={}", currentProject, currentDevice);
+                isValueChangeEnabled = false;
+                String deviceName = comboBoxStringComponentValueChangeEvent.getValue();
+                if (currentProject != null) {
+                    Optional<Device> device = iotService.findDeviceByProjectIdAndNameAndName(currentProject.getId(), deviceName);
+                    setCurrentDevice(device.orElse(null));
+                } else {
+                    setCurrentDevice(null);
+                }
+                isValueChangeEnabled = true;
+                //log.info("deviceSelection new: project={} device={}", currentProject, currentDevice);
+            }
         });
     }
 
@@ -225,63 +236,93 @@ public class MainLayout extends AppLayout {
     }
 
     private void setNavItems() {
-        navItemProjectDevices.setVisible(projectName != null);
-        navItemProjectDashboard.setVisible(projectName != null);
-        navItemProjectSettings.setVisible(projectName != null);
-        navItemDeviceDashboard.setVisible(deviceName != null);
-        navItemDeviceSettings.setVisible(deviceName != null);
+        navItemProjectDevices.setVisible(currentProject != null);
+        navItemProjectDashboard.setVisible(currentProject != null);
+        navItemProjectSettings.setVisible(currentProject != null);
 
-        RouteParameters projectRp;
-        RouteParameters deviceRp;
-        if (projectName != null && deviceName != null) {
-            projectRp = new RouteParameters(new RouteParam(PROJECT_NAME_RP, projectName));
-            deviceRp = new RouteParameters(new RouteParam(PROJECT_NAME_RP, projectName), new RouteParam(DEVICE_NAME_RP, deviceName));
-        } else if (projectName != null && deviceName == null) {
-            projectRp = new RouteParameters(new RouteParam(PROJECT_NAME_RP, projectName));
-            deviceRp = new RouteParameters(new RouteParam(PROJECT_NAME_RP, projectName), new RouteParam(DEVICE_NAME_RP, ""));
+        if (currentProject != null) {
+            navItemProjectDevices.setPath(DeviceList.class, DeviceList.getRouteParametersWithProject(currentProject));
+            navItemProjectDashboard.setPath(DefaultView.class);
+            navItemProjectSettings.setPath(ProjectSettings.class, ProjectSettings.getRouteParametersWithProject(currentProject));
         } else {
-            projectRp = new RouteParameters();
-            deviceRp = new RouteParameters(new RouteParam(PROJECT_NAME_RP, ""), new RouteParam(DEVICE_NAME_RP, ""));
+            navItemProjectDevices.setPath(DefaultView.class);
+            navItemProjectDashboard.setPath(DefaultView.class);
+            navItemProjectSettings.setPath(DefaultView.class);
         }
 
-        navItemProjectDevices.setPath(DeviceList.class, projectRp);
-        navItemProjectDashboard.setPath(DefaultView.class);
-        navItemProjectSettings.setPath(DefaultView.class);
+        navItemDeviceDashboard.setVisible(currentDevice != null);
+        navItemDeviceSettings.setVisible(currentDevice != null);
 
-        navItemDeviceDashboard.setPath(DeviceDashboard.class, deviceRp);
-        navItemDeviceSettings.setPath(DefaultView.class);
+        if (currentDevice != null) {
+            navItemDeviceDashboard.setPath(DeviceDashboard.class, DeviceDashboard.getRouteParametersWithDevice(currentDevice));
+            navItemDeviceSettings.setPath(DeviceSettings.class, DeviceSettings.getRouteParametersWithDevice(currentDevice));
+        } else {
+            navItemDeviceDashboard.setPath(DefaultView.class);
+            navItemDeviceSettings.setPath(DefaultView.class);
+        }
+
+        String projectName = (currentProject != null) ? currentProject.getName() : "";
+        if (!projectName.equals(projectSelection.getValue())) {
+            updateProjectNames();
+            isValueChangeEnabled = false;
+            projectSelection.setValue(projectName);
+            isValueChangeEnabled = true;
+        }
+
+        deviceSelection.setVisible(currentProject != null);
+        String deviceName = (currentDevice != null) ? currentDevice.getName() : "";
+        if (!deviceName.equals(deviceSelection.getValue())) {
+            updateDeviceNames();
+            isValueChangeEnabled = false;
+            deviceSelection.setValue(deviceName);
+            isValueChangeEnabled = true;
+        }
     }
 
-    public void setProjectName(String newProjectName) {
-        if (newProjectName == null || !iotService.projectExistsByName(newProjectName))
-        { // project is null or does not exist: reset project and device selection
-            projectName = null;
-            projectSelection.clear();
-            setDeviceName(null);
-        } else { // project named newProject is present
-            if (!newProjectName.equals(projectName)) {
-                log.info("New project name differing from current one, clearing device!");
-                projectName = newProjectName;
-                setDeviceName(null);
+    public void updateProjectNames() {
+        boolean oldIsValueChangeEnabled = isValueChangeEnabled;
+        isValueChangeEnabled = false;
+        projectSelection.setItems(iotService.findAllProjectNames(""));
+        isValueChangeEnabled = oldIsValueChangeEnabled;
+    }
+
+    public void updateDeviceNames() {
+        boolean oldIsValueChangeEnabled = isValueChangeEnabled;
+        isValueChangeEnabled = false;
+        if (currentProject != null) {
+            deviceSelection.setItems(iotService.searchAllDeviceNamesByProjectId(currentProject.getId(), ""));
+        } else {
+            deviceSelection.setItems();
+        }
+        isValueChangeEnabled = oldIsValueChangeEnabled;
+    }
+
+    public void setCurrentProject(Project newProject) {
+        if (newProject != null) {
+            if (!newProject.equals(currentProject)) {
+                //log.info("New project differing from current one, clearing device!");
+                currentProject = newProject;
+                currentDevice = null;
+                setNavItems();
             }
+        } else { // project empty: reset project and device selection
+            currentProject = null;
+            currentDevice = null;
+            setNavItems();
         }
     }
 
-    public void setDeviceName(String newDeviceName) {
-        boolean projectExists = (projectName != null) && iotService.projectExistsByName(projectName);
-        boolean deviceExists = projectExists && (deviceName != null) && iotService.deviceExistsByProjectNameAndDeviceName(projectName, newDeviceName);
-        if (!projectExists) {
-            projectName = null;
-            projectSelection.clear();
-        }
-        if (!deviceExists) {
-            deviceName = null;
-            deviceSelection.clear();
-        }
-        setNavItems();
-        if (projectExists && !deviceExists) {
-            RouteParameters rp = new RouteParameters(new RouteParam(PROJECT_NAME_RP, projectName));
-            UI.getCurrent().navigate(DeviceList.class, rp);
+    public void setCurrentDevice(Device newDevice) {
+        if (newDevice != null) {
+            if (!newDevice.equals(currentDevice)) {
+                //log.info("New device differing from current one!");
+                currentProject = newDevice.getProject();
+                currentDevice = newDevice;
+                setNavItems();
+            }
+        } else { // device empty
+            currentDevice = null;
+            setNavItems();
         }
     }
 
@@ -289,7 +330,6 @@ public class MainLayout extends AppLayout {
     protected void afterNavigation() {
         super.afterNavigation();
         viewTitle.setText(getCurrentPageTitle());
-        log.info("afterNavigation");
     }
 
     private String getCurrentPageTitle() {

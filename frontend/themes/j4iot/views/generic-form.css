@@ -1,31 +1,40 @@
 .generic-form {
   display: flex;
   flex-direction: column;
-  width: 400px;
+  height: 100%;
+}
+
+.generic-form .generic-form-section-title {
+  padding-top: var(--lumo-space-l);
+  padding-bottom: var(--lumo-space-s);
+}
+
+.generic-form .generic-form-element {
+  padding-top: var(--lumo-space-s);
+  padding-bottom: var(--lumo-space-s);
 }
 
 .generic-form .generic-form-main {
   flex-grow: 1;
-  padding: var(--lumo-space-l);
+  padding-left: var(--lumo-space-l);
+  padding-right: var(--lumo-space-l);
 }
 
 .generic-form .generic-form-header {
-  width: 100%;
   flex-wrap: wrap;
   background-color: var(--lumo-contrast-5pct);
-  padding-bottom: var(--lumo-space-l);
-  padding-top: var(--lumo-space-l);
+  padding-top: var(--lumo-space-m);
+  padding-bottom: var(--lumo-space-m);
   padding-left: var(--lumo-space-l);
   padding-right: var(--lumo-space-l);
   gap: var(--lumo-space-m);
 }
 
 .generic-form .generic-form-footer {
-  width: 100%;
   flex-wrap: wrap;
   background-color: var(--lumo-contrast-5pct);
-  padding-bottom: var(--lumo-space-l);
-  padding-top: var(--lumo-space-l);
+  padding-top: var(--lumo-space-s);
+  padding-bottom: var(--lumo-space-s);
   padding-left: var(--lumo-space-l);
   padding-right: var(--lumo-space-l);
   gap: var(--lumo-space-m);

@@ -11,14 +11,20 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.router.RouteParameters;
 import de.ostfalia.fbi.j4iot.data.entity.AbstractEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class GenericList<T extends AbstractEntity> extends VerticalLayout {
+import java.util.Optional;
+
+public abstract class GenericList<T extends AbstractEntity> extends VerticalLayout implements BeforeEnterObserver {
 
     private Logger log = LoggerFactory.getLogger(GenericList.class);
     protected final Class<T> modelClass;
+    protected RouteParameters routeParameters = null;
     protected TextField filterText = new TextField();
     protected Grid<T> grid;
     protected ConfirmDialog confirmDeleteDialog = createConfirmDeleteDialog();
@@ -79,26 +85,18 @@ public abstract class GenericList<T extends AbstractEntity> extends VerticalLayo
     }
 
     protected void configureGrid() {
-        grid.addComponentColumn(item ->
-                new Button(new Icon(VaadinIcon.EDIT), click -> {
-                    editItem(item);
-                }))
-                .setTooltipGenerator(item -> "Edit list item")
-                .setAutoWidth(true);
-        grid.addComponentColumn(item ->
-                new Button(new Icon(VaadinIcon.TRASH), click -> {
-                    confirmDeleteItem(item);
-                }))
-                .setTooltipGenerator(item -> "Delete list item")
-                .setAutoWidth(true);
+        grid.addComponentColumn(item -> {
+                    Button b1 = new Button(new Icon(VaadinIcon.EDIT), click -> { editItem(item); });
+                    b1.setTooltipText("Edit list item");
+                    Button b2 = new Button(new Icon(VaadinIcon.TRASH), click -> { confirmDeleteItem(item); });
+                    b2.setTooltipText("Delete list item");
+                    return new HorizontalLayout(b1, b2);
+                })
+                .setAutoWidth(true).setFlexGrow(0);
         grid.addClassNames("grid");
         grid.setSizeFull();
         grid.getColumns().forEach(col -> col.setAutoWidth(true));
     }
-
-    protected abstract boolean addItem();
-
-    protected abstract void editItem(T item);
 
     protected void confirmDeleteItem(T item) {
         confirmDeleteDialog.addCancelListener(event -> {
@@ -115,7 +113,33 @@ public abstract class GenericList<T extends AbstractEntity> extends VerticalLayo
         confirmDeleteDialog.open();
     }
 
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        routeParameters = event.getRouteParameters();
+    }
+
+    @FunctionalInterface
+    protected interface WithMainLayout { void execute(MainLayout m); }
+
+    protected void withMainLayout(WithMainLayout toExecute) {
+        Optional<Component> parent = getParent();
+        if (parent.isPresent()) {
+            if (parent.get() instanceof MainLayout m) {
+                toExecute.execute(m);
+            } else {
+                log.error("withMainLayout: found a parent which is not a MainLayout");
+            }
+        } else {
+            log.error("withMainLayout: parent not found - thanks, vaadin :-(");
+        }
+    }
+
+    protected abstract boolean addItem();
+
+    protected abstract void editItem(T item);
+
     protected abstract boolean removeItem(T item);
 
     abstract protected void updateItems();
 }
+

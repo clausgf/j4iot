@@ -3,24 +3,25 @@ package de.ostfalia.fbi.j4iot.views;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.formlayout.FormLayout;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
+import com.vaadin.flow.router.RouteParameters;
 import de.ostfalia.fbi.j4iot.data.entity.AbstractEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class GenericForm<T extends AbstractEntity> extends FormLayout {
+public abstract class GenericForm<T extends AbstractEntity> extends Div {
 
     private Logger log = LoggerFactory.getLogger(GenericForm.class);
     protected final Class<T> modelClass;
+    protected RouteParameters routeParameters = null;
+
     protected Button reset = new Button ("Reset");
     protected Button save = new Button("Save");
 
-    protected T item;
-    protected BeanValidationBinder<T> binder;
 
     public GenericForm(Class<T> modelClass) {
         this.modelClass = modelClass;

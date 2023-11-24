@@ -1,6 +1,8 @@
 package de.ostfalia.fbi.j4iot.views.project;
 
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.Key;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -8,17 +10,13 @@ import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
-import com.vaadin.flow.component.html.Section;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
-import com.vaadin.flow.router.BeforeEnterEvent;
-import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.*;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
 import de.ostfalia.fbi.j4iot.data.service.IotService;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
@@ -30,10 +28,10 @@ import java.util.Optional;
 
 @PermitAll
 @PageTitle("Project settings")
-@Route(value="/projects/:id", layout = MainLayout.class)
-public class ProjectForm extends FormLayout implements BeforeEnterObserver {
+@Route(value="/projects/:id/settings", layout = MainLayout.class)
+public class ProjectSettings extends FormLayout implements BeforeEnterObserver {
 
-    private Logger log = LoggerFactory.getLogger(ProjectForm.class);
+    private Logger log = LoggerFactory.getLogger(ProjectSettings.class);
     protected final Class<Project> modelClass;
     protected Button reset = new Button ("Reset");
     protected Button save = new Button("Save");
@@ -41,7 +39,7 @@ public class ProjectForm extends FormLayout implements BeforeEnterObserver {
     protected Project item;
     protected BeanValidationBinder<Project> binder;
 
-    public final static String ID_ROUTING_PARAM = "id";
+    public final static String ID_ROUTING_PARAMETER = "id";
     IotService service;
 
     TextField name = new TextField("Project name");
@@ -52,7 +50,23 @@ public class ProjectForm extends FormLayout implements BeforeEnterObserver {
     Checkbox autocreateDevices = new Checkbox("Autocreate devices");
     Checkbox provisioningAutoapproval = new Checkbox("Provisioning autoapproval");
 
-    public ProjectForm(IotService service) {
+
+    public static RouteParameters getRouteParametersWithProject(Project project) {
+        if (project != null) {
+            return new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, project.getId()));
+        } else {
+            return RouteParameters.empty();
+        }
+    }
+
+    public static void navigateToProject(Project project) {
+        assert project != null;
+        RouteParameters rp = new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, project.getId()));
+        UI.getCurrent().navigate(ProjectSettings.class, rp);
+    }
+
+
+    public ProjectSettings(IotService service) {
         //super(Project.class);
         this.modelClass = Project.class;
         addClassName("generic-form");
@@ -65,7 +79,7 @@ public class ProjectForm extends FormLayout implements BeforeEnterObserver {
         updatedAt.setReadOnly(true);
 
         H2 header = new H2("Project");
-        Section sectionHeader = new Section(header);
+        VerticalLayout sectionHeader = new VerticalLayout(header);
         sectionHeader.setClassName("generic-form-header");
         add(sectionHeader);
 
@@ -104,6 +118,7 @@ public class ProjectForm extends FormLayout implements BeforeEnterObserver {
     public void populateForm(Project item) {
         this.item = item;
         binder.readBean(item);
+        setMainLayoutProject(item);
     }
 
     protected void validateAndSave() {
@@ -131,7 +146,7 @@ public class ProjectForm extends FormLayout implements BeforeEnterObserver {
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        Optional<Long> id = event.getRouteParameters().getLong(ID_ROUTING_PARAM);
+        Optional<Long> id = event.getRouteParameters().getLong(ID_ROUTING_PARAMETER);
         if (id.isPresent()) {
             Optional<Project> item = service.findProjectById(id.get());
             if (item.isPresent()) {
@@ -146,4 +161,14 @@ public class ProjectForm extends FormLayout implements BeforeEnterObserver {
         }
     }
 
+    private void setMainLayoutProject(Project project) {
+        Optional<Component> parent = getParent();
+        if (parent.isPresent()) {
+            if (parent.get() instanceof MainLayout m) {
+                m.setCurrentProject(project);
+            }
+        } else {
+            log.error("setMainLayoutProject did not find a parent component!");
+        }
+    }
 }

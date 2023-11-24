@@ -1,17 +1,44 @@
 version: '3.8'
 
 services:
+  influxdb:
+    image: influxdb:2.7-alpine
+    restart: always
+    volumes:
+      - ./influxdb-data:/var/lib/influxdb2
+      - ./influxdb-config:/etc/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=${INFLUXDB_INIT_MODE}
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_INIT_USERNAME}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_INIT_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_INIT_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET}
+      - DOCKER_INFLUXDB_INIT_RETENTION=${INFLUXDB_INIT_RETENTION}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_INIT_ADMIN_TOKEN}
+    networks:
+      - backend
+    # ports:
+    #   - 8086:8086
+
   postgres:
-    image: postgres:12.2
+    #image: postgres:12.2
+    image: postgres:13.1-alpine
     restart: always
     environment:
-      POSTGRES_USER: {$POSTGRES_USER}
-      POSTGRES_PASSWORD: {$POSTGRES_PASSWORD}
-      POSTGRES_DB: {$POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
     networks:
       - backend
+    # ports:
+    #   - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   vaadin:
     image: j4iot
@@ -23,13 +50,26 @@ services:
       - backend
       - global-proxy
     depends_on:
-      - postgres
+      #- postgres
+      postgres:
+        condition: service_healthy
+    environment:
+      - VAADIN_LAUNCH_BROWSER=false
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/{$POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME={$POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD={$POSTGRES_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - J4IOT_INFLUXDB_URL=${INFLUXDB_URL}
+      - J4IOT_INFLUXDB_TOKEN=${INFLUXDB_TOKEN}
+      - J4IOT_INFLUXDB_ORG=${INFLUXDB_ORG}
+      - J4IOT_DEFAULT_USERNAME=${DEFAULT_USERNAME}
+      - J4IOT_DEFAULT_PASSWORD=${DEFAULT_PASSWORD}
     labels:
       - "traefik.enable=true" # enables the service
       - "traefik.network=global-proxy" # use the global-proxy network
       - "traefik.http.services.j4iot.loadbalancer.server.port=8080" # port of the service
       - "traefik.http.routers.j4iot.service=j4iot" # name of the service
-      - "traefik.http.routers.j4iot.rule=(Host(`${traefik_domain}`) || Host(`141.41.235.51`)) && PathPrefix(`${traefik_path}`)"
+      #- "traefik.http.routers.j4iot.rule=(Host(`${traefik_domain}`) || Host(`141.41.235.51`))`)"
       - "traefik.http.routers.j4iot.entrypoints=websecure" # use the websecure entrypoint
       - "traefik.http.routers.j4iot.tls=true" # enable TLS
 

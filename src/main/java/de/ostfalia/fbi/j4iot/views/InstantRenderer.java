@@ -1,4 +1,4 @@
-package de.ostfalia.fbi.j4iot;
+package de.ostfalia.fbi.j4iot.views;
 
 import com.vaadin.flow.data.renderer.BasicRenderer;
 import com.vaadin.flow.function.ValueProvider;

@@ -1,16 +1,16 @@
 package de.ostfalia.fbi.j4iot.views.device;
 
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.Text;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H4;
+import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
-import com.vaadin.flow.router.BeforeEnterEvent;
-import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.HasDynamicTitle;
-import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.*;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
 import de.ostfalia.fbi.j4iot.data.service.IotService;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
@@ -21,23 +21,35 @@ import org.slf4j.LoggerFactory;
 import java.util.Optional;
 
 @PermitAll
-@Route(value="/projects/:projectName/devices/:deviceName/dashboard", layout = MainLayout.class)
+@Route(value="/devices/:id/dashboard", layout = MainLayout.class)
 public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnterObserver {
 
     Logger log = LoggerFactory.getLogger(DeviceDashboard.class);
 
-    public final static String PROJECT_NAME_RP = "projectName";
-    public final static String DEVICE_NAME_RP = "deviceName";
+    public final static String ID_ROUTING_PARAMETER = "id";
 
     private final TextField description = new TextField("description");
     private final TextField location = new TextField("location");
 
-    private String projectName;
-    private String deviceName;
-    private Device device;
+    private Device item;
 
     private final IotService service;
     private final BeanValidationBinder<Device> binder;
+
+
+    public static RouteParameters getRouteParametersWithDevice(Device device) {
+        if (device != null) {
+            return new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, device.getId()));
+        } else {
+            return RouteParameters.empty();
+        }
+    }
+
+    public static void navigateToWithDevice(Device device) {
+        assert device != null;
+        RouteParameters rp = new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, device.getId()));
+        UI.getCurrent().navigate(DeviceSettings.class, rp);
+    }
 
 
     public DeviceDashboard(IotService service) {
@@ -58,20 +70,48 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
         binder.bindInstanceFields(this);
     }
 
+
+    private void setMainLayoutDevice(Device device) {
+        Optional<Component> parent = getParent();
+        if (parent.isPresent()) {
+            if (parent.get() instanceof MainLayout m) {
+                m.setCurrentDevice(device);
+            }
+        } else {
+            log.error("setMainLayoutDevice did not find a parent component!");
+        }
+    }
+
+    public void populateForm(Device item) {
+        this.item = item;
+        binder.readBean(item);
+        setMainLayoutDevice(item);
+
+
+    }
+
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        projectName = event.getRouteParameters().get(PROJECT_NAME_RP).orElse("");
-        deviceName = event.getRouteParameters().get(DEVICE_NAME_RP).orElse("");
-        binder.readBean(device);
+        Optional<Long> id = event.getRouteParameters().getLong(ID_ROUTING_PARAMETER);
+        if (id.isPresent()) {
+            Optional<Device> item = service.findDeviceById(id.get());
+            if (item.isPresent()) {
+                populateForm(item.get());
+            } else {
+                Notification.show("The requested item was not found, id=" + id.get());
+                populateForm(null);
+            }
+        } else {
+            log.error("Invalid route parameter, expected projectId");
+            populateForm(null);
+        }
     }
 
     @Override
     public String getPageTitle() {
-        String title;
-        if ((projectName == null) || projectName.isEmpty() || deviceName == null || deviceName.isEmpty()) {
-            title = "Dashboard for unknown";
-        } else {
-            title = "Dashboard for " + projectName + "/" + deviceName;
+        String title = "Dashboard for unknown";
+        if (item != null) {
+            title = "Dashboard for " + item.getName() + " in " + item.getProject().getName();
         }
         return title;
     }
@@ -83,14 +123,13 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
         H4 title = new H4("Overview");
         card.add(title);
 
-        Optional<Device> deviceOptional = service.findDeviceByProjectNameAndName(projectName, deviceName);
-        if (deviceOptional.isEmpty()) {
-            Text empty = new Text("Device " + deviceName + " not found in project " + projectName+ ".");
+        if (item == null) {
+            Text empty = new Text("Device not found.");
             card.add(empty);
             return card;
         }
 
-        Device device = deviceOptional.get();
+        Device device = item;
 
         Div lastProvisioningRequest = new Div(new Text("Last provisioning request"), new Text(device.getLastProvisioningRequestAt().toString()));
         Div lastProvisioning = new Div(new Text("Last provisioning"), new Text(device.getLastProvisionedAt().toString()));

@@ -74,9 +74,9 @@ public class IotService {
         return projectRepository.findById(id);
     }
 
-    /*public Optional<Project> findProjectByName(String name) {
+    public Optional<Project> findProjectByName(String name) {
         return projectRepository.findOneByName(name);
-    }*/
+    }
 
     public long countDevicesInProject(Project project) {
         return deviceRepository.countByProjectId(project.getId());
@@ -88,7 +88,7 @@ public class IotService {
     public void deleteProject(Project project) {
         // TODO make sure to delete really everything, might need to add some cascading
         Long projectId = project.getId();
-        project = projectRepository.findById(projectId).orElseThrow( () -> new RuntimeException("Project to delete id=" + projectId.toString() + " not found") );
+        project = projectRepository.findById(projectId).orElseThrow( () -> new RuntimeException("Project to delete not found id=" + projectId) );
         provisioningTokenRepository.deleteAll(project.getProvisioningTokens());
         deviceRepository.deleteAll(project.getDevices());
         projectRepository.delete(project);
@@ -131,34 +131,37 @@ public class IotService {
         return deviceRepository.searchAll(stringFilter);
     }
 
-    public List<Device> searchAllDevicesByProjectName(String projectName, String stringFilter) {
+    public List<Device> searchAllDevicesByProjectId(Long projectId, String stringFilter) {
         if (stringFilter == null || stringFilter.isEmpty()) {
-            return deviceRepository.findAllByProjectName(projectName);
+            return deviceRepository.findAllByProjectId(projectId);
         }
-        return deviceRepository.searchAllByProjectName(projectName, stringFilter);
+        return deviceRepository.searchAllByProjectId(projectId, stringFilter);
     }
 
-    public List<String> searchAllDeviceNames(String stringFilter) {
+    public List<String> searchAllDeviceNamesByProjectId(Long projectId, String stringFilter) {
         if (stringFilter == null || stringFilter.isEmpty()) {
-            return deviceRepository.findAllNames();
+            return deviceRepository.findAllNamesByProjectId(projectId);
         }
-        return deviceRepository.searchAllNames(stringFilter);
+        return deviceRepository.searchAllNamesByProjectId(projectId, stringFilter);
     }
 
-    public List<String> searchAllDeviceNamesByProjectName(String projectName, String stringFilter) {
-        if (stringFilter == null || stringFilter.isEmpty()) {
-            return deviceRepository.findAllNamesByProjectName(projectName);
-        }
-        return deviceRepository.searchAllNamesByProjectName(projectName, stringFilter);
+    public Optional<Device> findDeviceById(Long id) {
+        return deviceRepository.findById(id);
     }
 
-    public Optional<Device> findDeviceByProjectNameAndName(String projectName, String deviceName) {
-        return deviceRepository.findOneByProjectNameAndName(projectName, deviceName);
+    public Optional<Device> findDeviceByProjectIdAndNameAndName(Long projectId, String deviceName) {
+        return deviceRepository.findOneByProjectIdAndName(projectId, deviceName);
     }
 
     public Boolean deviceExistsByProjectNameAndDeviceName(String projectName, String deviceName) { return deviceRepository.existsByProjectNameAndDeviceName(projectName, deviceName); }
 
-    public void deleteDevice(Device device) { deviceRepository.delete(device); }
+    public void deleteDevice(Device device) {
+        // TODO make sure to delete really everything, might need to add some cascading
+        Long deviceId = device.getId();
+        device = deviceRepository.findById(deviceId).orElseThrow( () -> new RuntimeException("Device to delete not found id=" + deviceId) );
+        deviceTokenRepository.deleteAll(device.getDeviceTokens());
+        deviceRepository.delete(device);
+    }
 
     public Device updateDevice(Device device) {
         if (device == null) {
@@ -202,6 +205,26 @@ public class IotService {
     }
 
     // ************************************************************************
+
+    /**
+     * Add a device token to a device from the user logged in.
+     * This method does not store information to the database!
+     */
+    public DeviceToken addDeviceToken(Device device) {
+        final Project project = device.getProject();
+        String prefix = String.format("D-%d-%d-", project.getId(), device.getId());
+        byte[] randomBytes = new byte[project.getDefaultDeviceTokenLength()];
+        secureRandom.nextBytes(randomBytes);
+        String tokenValue = base64Encoder.encodeToString(prefix.getBytes()) + base64Encoder.encodeToString(randomBytes);
+        Instant expiresAt = Instant.now().plusSeconds(project.getDefaultDeviceTokenExpiresInSeconds());
+        DeviceToken deviceToken = new DeviceToken(
+                device,
+                tokenValue,
+                expiresAt);
+        device.getDeviceTokens().add(deviceToken);
+        return deviceToken;
+    }
+
 
     public DeviceToken addDeviceToken(ProvisioningToken provisioningToken, Device device) {
         Project project = provisioningToken.getProject();

@@ -1,156 +1,131 @@
 package de.ostfalia.fbi.j4iot.views.device;
 
-import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.*;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
+import de.ostfalia.fbi.j4iot.data.entity.Project;
 import de.ostfalia.fbi.j4iot.data.service.IotService;
+import de.ostfalia.fbi.j4iot.views.GenericList;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
 import jakarta.annotation.security.PermitAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vaadin.lineawesome.LineAwesomeIcon;
 
-import java.util.List;
 import java.util.Optional;
 
 @PermitAll
-@Route(value="/projects/:projectName?/devices", layout = MainLayout.class)
-public class DeviceList extends VerticalLayout implements HasDynamicTitle, BeforeEnterObserver {
+@Route(value="/projects/:id?/devices", layout = MainLayout.class)
+public class DeviceList extends GenericList<Device> implements HasDynamicTitle, BeforeEnterObserver, AfterNavigationObserver {
 
-    Logger log = LoggerFactory.getLogger(DeviceList.class);
+    public final static String ID_ROUTING_PARAMETER = "id";
+    private Logger log = LoggerFactory.getLogger(DeviceList.class);
+    private IotService service;
 
-    public final static String PROJECT_NAME_RP = "projectName";
-    public final static String DEVICE_NAME_RP = "deviceName";
+    private Project project;
 
-    Grid<Device> grid = new Grid<>(Device.class);
-    TextField filterText = new TextField();
 
-    String projectName;
-    DeviceForm form;
-    IotService service;
+    public static RouteParameters getRouteParametersWithProject(Project project) {
+        if (project != null) {
+            return new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, project.getId()));
+        } else {
+            return RouteParameters.empty();
+        }
+    }
+
+    public static void navigateToProject(Project project) {
+        if (project != null) {
+            RouteParameters rp = new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, project.getId()));
+            UI.getCurrent().navigate(DeviceList.class, rp);
+        } else {
+            UI.getCurrent().navigate(DeviceList.class);
+        }
+    }
+
 
     public DeviceList(IotService service) {
+        super(Device.class);
         this.service = service;
-        addClassName("list-view");
-        setSizeFull();
-        configureGrid();
-        configureForm();
-        add(getToolbar(), getContent());
-        updateList();
-        closeEditor();
-    }
-
-    private Component getContent() {
-        HorizontalLayout content = new HorizontalLayout(grid, form);
-        content.setFlexGrow(2, grid);
-        content.setFlexGrow(1, form);
-        content.addClassNames("content");
-        content.setSizeFull();
-        return content;
-    }
-
-    private void configureForm() {
-        form = new DeviceForm();
-        form.setWidth("30em");
-        form.addSaveListener(this::saveDevice);
-        form.addDeleteListener(this::deleteDevice);
-        form.addCloseListener(e->closeEditor());
-    }
-
-    private void saveDevice(DeviceForm.SaveEvent event) {
-        service.updateDevice(event.getDevice());
-        updateList();
-        closeEditor();
-    }
-
-    private void deleteDevice(DeviceForm.DeleteEvent event) {
-        service.deleteDevice(event.getDevice());
-        updateList();
-        closeEditor();
-    }
-
-    private void configureGrid() {
-        grid.addClassNames("grid");
-        grid.setSizeFull();
-        grid.setColumns();
-        grid.addComponentColumn(item -> new Button(LineAwesomeIcon.LINK_SOLID.create(), click -> {
-            RouteParameters rp = new RouteParameters(new RouteParam(PROJECT_NAME_RP, item.getProject().getName()), new RouteParam(DEVICE_NAME_RP, item.getName()));
-            UI.getCurrent().navigate(DeviceDashboard.class, rp);
-        })).setHeader("Devices");
-        grid.addColumns("name", "location", "tags", "provisioningApproved", "lastProvisioningRequestAt", "lastProvisionedAt", "lastSeenAt");
-        grid.getColumns().forEach(col -> col.setAutoWidth(true));
-
-        grid.asSingleSelect().addValueChangeListener(event -> editDevice(event.getValue()));
-    }
-
-    private HorizontalLayout getToolbar() {
-        filterText.setPlaceholder("Filter by name or tag");
-        filterText.setClearButtonVisible(true);
-        filterText.setValueChangeMode(ValueChangeMode.LAZY);
-        filterText.addValueChangeListener(e -> updateList());
-
-        Button addButton = new Button("Add Device");
-        addButton.addClickListener(click -> addDevice());
-
-        var toolbar = new HorizontalLayout(filterText, addButton);
-        toolbar.addClassName("toolbar");
-        return toolbar;
-    }
-
-    public void editDevice(Device device) {
-        if (device == null) {
-            closeEditor();
-        } else {
-            form.setDevice(device);
-            form.setVisible(true);
-            addClassName("editing");
-        }
-    }
-
-    private void closeEditor() {
-        form.setDevice(null);
-        form.setVisible(false);
-        removeClassName("editing");
-    }
-
-    private void addDevice() {
-        grid.asSingleSelect().clear();
-        editDevice(new Device());
-    }
-
-    private void updateList() {
-        List<Device> devices;
-        if ((projectName == null) || projectName.isEmpty()) {
-            devices = service.searchAllDevices(filterText.getValue());
-        } else {
-            devices = service.searchAllDevicesByProjectName(projectName, filterText.getValue());
-        }
-        grid.setItems(devices);
+        updateItems();
     }
 
     @Override
-    public void beforeEnter(BeforeEnterEvent event) {
-        Optional<String> projectName = event.getRouteParameters().get(PROJECT_NAME_RP);
-        this.projectName = projectName.orElse("");
-        updateList();
+    protected void configureGrid() {
+        grid.setColumns();
+        grid.addComponentColumn(item -> new Button(LineAwesomeIcon.TACHOMETER_ALT_SOLID.create(), click -> {
+            DeviceDashboard.navigateToWithDevice(item);
+        })).setTooltipGenerator(item -> "Dashboard");
+        grid.addColumns("name", "tags", "provisioningApproved", "lastProvisioningRequestAt", "lastProvisionedAt", "lastSeenAt");
+        super.configureGrid();
+    }
+
+    @Override
+    protected void confirmDeleteItem(Device item) {
+        confirmDeleteDialog.setHeader("Danger: Delete Device " + item.getName());
+        String msg = String.format("Do you really want to device %s?", item.getName());
+        confirmDeleteDialog.setText(msg);
+        super.confirmDeleteItem(item);
+    }
+
+    @Override
+    protected boolean addItem() {
+        return false;
+    }
+
+    @Override
+    protected void editItem(Device item) {
+        DeviceSettings.navigateToWithDevice(item);
+    }
+
+    @Override
+    protected boolean removeItem(Device item) {
+        try {
+            service.deleteDevice(item);
+        } catch (Exception e) {
+            log.error("Error in removeItem(Device id={} name={}): {}", item.getId(), item.getName(), e.getMessage());
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    protected void updateItems() {
+        if (service == null) {
+            grid.setItems();
+        } else {
+            if (project == null) {
+                grid.setItems(service.searchAllDevices(filterText.getValue()));
+            } else {
+                grid.setItems(service.searchAllDevicesByProjectId(project.getId(), filterText.getValue()));
+            }
+        }
     }
 
     @Override
     public String getPageTitle() {
-        String title;
-        if ((projectName == null) || projectName.isEmpty()) {
-            title = "Devices in any project";
+        String title = "Devices in any project";
+        if (project != null) {
+            title = "Devices in " + project.getName() + " project";
         } else {
-            title = "Devices in " + projectName + " project";
+            project = null;
         }
         return title;
     }
 
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        super.beforeEnter(event);
+        project = null;
+        Optional<Long> id = routeParameters.getLong(ID_ROUTING_PARAMETER);
+        if (id.isPresent()) {
+            project = service.findProjectById(id.get()).orElse(null);
+        }
+    }
+
+    @Override
+    public void afterNavigation(AfterNavigationEvent event) {
+        withMainLayout(m -> m.setCurrentProject(project));
+        updateItems();
+    }
 }
