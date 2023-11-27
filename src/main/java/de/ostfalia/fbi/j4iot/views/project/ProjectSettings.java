@@ -32,20 +32,23 @@ import java.util.LinkedList;
 @Route(value="/projects/:id?/settings", layout = MainLayout.class)
 public class ProjectSettings extends GenericForm<Project> implements HasDynamicTitle {
 
-    private Logger log = LoggerFactory.getLogger(ProjectSettings.class);
-    ProjectService service;
+    // ***********************************************************************
 
-    TextField name = new TextField("Project name");
-    TextField description = new TextField("Description");
-    TextField tags = new TextField("Tags");
-    DateTimePicker createdAt = new DateTimePicker("Created at");
-    DateTimePicker updatedAt = new DateTimePicker("Update at");
-    Checkbox autocreateDevices = new Checkbox("Autocreate devices");
-    Checkbox provisioningAutoapproval = new Checkbox("Provisioning autoapproval");
+    private final Logger log = LoggerFactory.getLogger(ProjectSettings.class);
+    private final ProjectService service;
 
-    Grid<ProvisioningToken> provisioningTokens = new Grid<>(ProvisioningToken.class);
-    Button addProvisioningTokenButton = new Button("Add provisioning token");
+    private final TextField name = new TextField("Project name");
+    private final TextField description = new TextField("Description");
+    private final TextField tags = new TextField("Tags");
+    private final DateTimePicker createdAt = new DateTimePicker("Created at");
+    private final DateTimePicker updatedAt = new DateTimePicker("Update at");
+    private final Checkbox autocreateDevices = new Checkbox("Autocreate devices");
+    private final Checkbox provisioningAutoapproval = new Checkbox("Provisioning autoapproval");
 
+    private final Grid<ProvisioningToken> provisioningTokens = new Grid<>(ProvisioningToken.class);
+    private final Button addProvisioningTokenButton = new Button("Add provisioning token");
+
+    // ***********************************************************************
 
     public static RouteParameters getRouteParameters(Project project) {
         if (project != null) {
@@ -60,6 +63,7 @@ public class ProjectSettings extends GenericForm<Project> implements HasDynamicT
         UI.getCurrent().navigate(ProjectSettings.class, rp);
     }
 
+    // ***********************************************************************
 
     public ProjectSettings(ProjectService service) {
         super(Project.class);
@@ -68,9 +72,9 @@ public class ProjectSettings extends GenericForm<Project> implements HasDynamicT
 
         FormLayout main = addForm();
         Arrays.asList(createdAt, updatedAt).forEach(e -> e.setReadOnly(true));
-        Arrays.asList(name, description, tags).forEach(e -> main.setColspan(e, 2));
         main.setColspan(provisioningTokens, 2);
         main.setColspan(addProvisioningTokenButton, 2);
+        Arrays.asList(name, description, tags).forEach(e -> main.setColspan(e, 2));
         addSectionTo(main, "General settings", name, description, tags, createdAt, updatedAt);
         addSectionTo(main, "Specific settings", autocreateDevices, provisioningAutoapproval);
 
@@ -108,6 +112,8 @@ public class ProjectSettings extends GenericForm<Project> implements HasDynamicT
         addFooter();
     }
 
+    // ***********************************************************************
+
     @Override
     public String getPageTitle() {
         String title = "Create project";
@@ -120,6 +126,7 @@ public class ProjectSettings extends GenericForm<Project> implements HasDynamicT
     @Override
     public void populateForm(Project item) {
         super.populateForm(item);
+        name.setReadOnly( item != null );
         if (item == null) {
             provisioningTokens.setItems(new LinkedList<>());
         } else {

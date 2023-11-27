@@ -58,8 +58,8 @@ public class DeviceList extends GenericList<Device> implements HasDynamicTitle, 
     @Override
     protected void configureGrid() {
         grid.setColumns();
-        grid.addComponentColumn(item -> new Button(VaadinIcon.SLIDERS.create(), click -> {
-            DeviceSettings.navigateTo(item.getProject(), item);
+        grid.addComponentColumn(item -> new Button(VaadinIcon.DASHBOARD.create(), click -> {
+            DeviceDashboard.navigateTo( item );
         })).setTooltipGenerator(item -> "Dashboard").setFlexGrow(0);
         grid.addColumns("name", "tags");
         grid.addColumn(new ComponentRenderer<>(device -> {
@@ -136,9 +136,9 @@ public class DeviceList extends GenericList<Device> implements HasDynamicTitle, 
             grid.setItems();
         } else {
             if (project == null) {
-                grid.setItems(deviceService.findAllByAuth());
+                grid.setItems(deviceService.findAllByUserAuth());
             } else {
-                grid.setItems(deviceService.findAllByAuthAndProjectId(project.getId()));
+                grid.setItems(deviceService.findAllByUserAuthAndProjectId(project.getId()));
             }
         }
     }

@@ -69,10 +69,15 @@ public class DeviceService {
     }
 
     public Optional<Device> findByProjectNameAndName(String projectName, String deviceName) {
-        return deviceRepository.findByProjectNameAndName(projectName, deviceName);
+        Optional<Device> device = deviceRepository.findByProjectNameAndName(projectName, deviceName);
+        if (device.isPresent()) {
+            device.get().setLastSeenAt( Instant.now() );
+            device = Optional.of( deviceRepository.save(device.get()) );
+        }
+        return device;
     }
 
-    public List<Device> findAllByAuth() {
+    public List<Device> findAllByUserAuth() {
         Long userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
             return deviceRepository.findAllByUserId(userId);
@@ -81,7 +86,7 @@ public class DeviceService {
         }
     }
 
-    public Optional<Device> findByAuthAndId(Long id) {
+    public Optional<Device> findByUserAuthAndId(Long id) {
         Long userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
             return deviceRepository.findByUserIdAndId(userId, id);
@@ -90,7 +95,7 @@ public class DeviceService {
         }
     }
 
-    public List<Device> findAllByAuthAndProjectId(Long projectId) {
+    public List<Device> findAllByUserAuthAndProjectId(Long projectId) {
         Long userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
             return deviceRepository.findAllByUserIdAndProjectId(userId, projectId);
@@ -99,7 +104,7 @@ public class DeviceService {
         }
     }
 
-    public Optional<Device> findByAuthAndProjectIdAndName(Long projectId, String name) {
+    public Optional<Device> findByUserAuthAndProjectIdAndName(Long projectId, String name) {
         Long userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
             return deviceRepository.findByUserIdAndProjectIdAndName(userId, projectId, name);
@@ -108,7 +113,7 @@ public class DeviceService {
         }
     }
 
-    public List<String> findAllNamesByAuthAndProjectId(Long projectId) {
+    public List<String> findAllNamesByUserAuthAndProjectId(Long projectId) {
         Long userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
             return deviceRepository.findAllNamesByUserIdAndProjectId(userId, projectId);
@@ -128,11 +133,6 @@ public class DeviceService {
         Long deviceId = device.getId();
         device = deviceRepository.findById(deviceId).orElseThrow( () -> new RuntimeException("Device to delete not found id=" + deviceId) );
         deviceRepository.delete(device);
-    }
-
-    // TODO auto-update last... method, e.g. in finder methods - which signature do we need?
-    // access security concept
-    public void findDeviceUpdateSeen(Long deviceId) {
     }
 
 
@@ -181,21 +181,6 @@ public class DeviceService {
 
     // ************************************************************************
 
-    public Device getOrCreateDevice(Project project, String name) {
-        Device d = deviceRepository.findByProjectIdAndName(project.getId(), name).orElse(null);
-        if ( d == null && project.getAutocreateDevices() ) { // autocreate device
-            d = new Device(project, name, project.getProvisioningAutoapproval());
-            project.getDevices().add( d );
-        }
-        if ( d == null ) {
-            String msg = String.format("Device not found or autocreate failed projectName=%s deviceName=%s",
-                    project.getName(), name);
-            log.info( msg );
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, msg);
-        }
-        return d;
-    }
-
     @Transactional
     public String provision(String projectName, String deviceName, String provisioningTokenStr) {
         // check for provisioning token existence
@@ -207,8 +192,26 @@ public class DeviceService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, msg);
         }
         ProvisioningToken pt = pto.get();
+        pt.setLastUseAt(Instant.now());  // record "last use" info of provisioning token
+        pt = provisioningTokenRepository.save(pt);
+        Project project = pt.getProject();
 
-        // check expiry
+        // check correctness of project name
+        if ( !projectName.equals( project.getName() ) ) {
+            String msg = String.format( "ProjectName does not match provisioning token projectName=%s deviceName=%s token=%s",
+                    projectName, deviceName, provisioningTokenStr);
+            log.info(msg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, msg);
+        }
+
+        // if device exists: update lastProvisionedAt (in case of an exception
+        Device device = deviceRepository.findByProjectIdAndName( project.getId(), deviceName ).orElse(null);
+        if ( device != null ) {
+            device.setLastProvisioningRequestAt( Instant.now() );
+            device = deviceRepository.save(device);
+        }
+
+        // check provisioning token expiry
         if (pt.getExpiresAt().isBefore(Instant.now())) {
             String msg = String.format("Provisioning token expired projectName=%s deviceName=%s token=%s",
                     projectName, deviceName, provisioningTokenStr);
@@ -216,25 +219,26 @@ public class DeviceService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, msg);
         }
 
-        // record "last use" info of provisioning token
-        pt.setLastUseAt(Instant.now());
-        pt = provisioningTokenRepository.save(pt);
-
-        // check correctness of project name
-        if ( !projectName.equals( pt.getProject().getName() ) ) {
-            String msg = String.format( "ProjectName does not match provisioning token projectName=%s deviceName=%s token=%s",
-                    projectName, deviceName, provisioningTokenStr);
-            log.info(msg);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, msg);
+        // device autocreation
+        if ( device == null ) {
+            if ( project.getAutocreateDevices() ) {
+                device = new Device(project, deviceName, project.getProvisioningAutoapproval());
+                project.getDevices().add( device );
+            } else { // no device, no autocration: bail out
+                String msg = String.format("Device not found or autocreate failed: projectName=%s deviceName=%s",
+                        project.getName(), deviceName);
+                log.info(msg);
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, msg);
+            }
         }
 
-        // get/create device
-        Device device = getOrCreateDevice( pt.getProject(), deviceName );
+        // device exists and provisioning ok: record provisioning
         device.setLastProvisioningRequestAt( Instant.now() );
-        device = updateDevice(device);  // write device as we need its id
+        device.setLastProvisionedAt( Instant.now() );
+        device = updateDevice( device );  // write device as we need its id
 
-        DeviceToken deviceToken = addNewDeviceToken(device);
-        device.setLastProvisionedAt(Instant.now());
+        // create & return device token, transaction will save everything
+        DeviceToken deviceToken = addNewDeviceToken( device );
         log.info("provisioned project={} device={} provisioningToken={}", projectName, deviceName, provisioningTokenStr);
         return deviceToken.getToken();
     }

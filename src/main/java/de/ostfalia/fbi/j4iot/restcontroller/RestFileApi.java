@@ -9,15 +9,18 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
-import org.springframework.http.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
 @RestController
-@RequestMapping(value = "/api")
+@RequestMapping("${j4iot.api.path:/api}")
 public class RestFileApi {
 
     // ***********************************************************************
@@ -41,7 +44,8 @@ public class RestFileApi {
             @PathVariable String projectName,
             @PathVariable String deviceName,
             @PathVariable String filename,
-            HttpServletRequest request) {
+            HttpServletRequest httpRequest,
+            ServletWebRequest webRequest) {
 
         ServiceUtils.checkName(projectName);
         ServiceUtils.checkName(deviceName);
@@ -52,27 +56,45 @@ public class RestFileApi {
                         HttpStatus.NOT_FOUND,
                         "Device not found: projectName=" + projectName + " deviceName=" + deviceName));
 
-        // get the response and check its existence
+        // get the resource, last modified and etag
         Resource resource = null;
+        long lastModified;
         try {
             resource = fileService.loadFileAsResource(device, filename);
-        } catch (FileNotFoundException e) {
-            String msg = String.format("File not found (projectName=%s deviceName=%s filename=%s)",
-                    projectName, deviceName, filename);
-            log.info(msg);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, msg);
-        }
-        if (!resource.exists()) {  // double check the resource
-            String msg = String.format("File not found (projectName=%s deviceName=%s filename=%s)",
+            lastModified = resource.lastModified();
+        } catch (IOException e) {
+            String msg = String.format("IO error (file not found?) (projectName=%s deviceName=%s filename=%s)",
                     projectName, deviceName, filename);
             log.info(msg);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, msg);
         }
 
+        // check for possible not modified response
         String etag = fileService.calcEtag(resource);
+        if (webRequest.checkNotModified(etag, lastModified)) {
+            // shortcut exit - no further processing necessary
+            return null;
+        }
 
-        return ResponseEntity.ok()
+        // determine content type for the response
+        String contentType;
+        try {
+            contentType = httpRequest.getServletContext().getMimeType(resource.getFile().getAbsolutePath());
+        } catch (IOException e) {
+            String msg = String.format("Error determining content type (projectName=%s deviceName=%s filename=%s): %s",
+                    projectName, deviceName, filename, e.getMessage());
+            log.info(msg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, msg);
+        }
+        if (contentType == null) {
+            contentType = "application/octet-stream";
+        }
+
+        return ResponseEntity
+                .ok()
                 .eTag(etag)
+                .lastModified(lastModified)
+                .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
                 .body("");
         // TODO add not modified response
@@ -86,7 +108,8 @@ public class RestFileApi {
             @PathVariable String projectName,
             @PathVariable String deviceName,
             @PathVariable String filename,
-            HttpServletRequest request) {
+            HttpServletRequest httpRequest,
+            ServletWebRequest webRequest) {
 
         ServiceUtils.checkName(projectName);
         ServiceUtils.checkName(deviceName);
@@ -97,27 +120,30 @@ public class RestFileApi {
                         HttpStatus.NOT_FOUND,
                         "Device not found: projectName=" + projectName + " deviceName=" + deviceName));
 
-        // get the response and check its existence
-        Resource resource = null;
+        // get the resource, last modified and etag
+        Resource resource;
+        long lastModified;
         try {
             resource = fileService.loadFileAsResource(device, filename);
-        } catch (FileNotFoundException e) {
-            String msg = String.format("File not found (projectName=%s deviceName=%s filename=%s)",
-                    projectName, deviceName, filename);
-            log.info(msg);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, msg);
-        }
-        if (!resource.exists()) {  // double check the resource
-            String msg = String.format("File not found (projectName=%s deviceName=%s filename=%s)",
+            lastModified = resource.lastModified();
+        } catch (IOException e) {
+            String msg = String.format("IO error (file not found?) (projectName=%s deviceName=%s filename=%s)",
                     projectName, deviceName, filename);
             log.info(msg);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, msg);
         }
 
+        // check for possible not modified response
+        String etag = fileService.calcEtag(resource);
+        if (webRequest.checkNotModified(etag, lastModified)) {
+            // shortcut exit - no further processing necessary
+            return null;
+        }
+
         // determine content type for the response
-        String contentType = null;
+        String contentType;
         try {
-            contentType = request.getServletContext().getMimeType(resource.getFile().getAbsolutePath());
+            contentType = httpRequest.getServletContext().getMimeType(resource.getFile().getAbsolutePath());
         } catch (IOException e) {
             String msg = String.format("Error determining content type (projectName=%s deviceName=%s filename=%s): %s",
                     projectName, deviceName, filename, e.getMessage());
@@ -128,14 +154,13 @@ public class RestFileApi {
             contentType = "application/octet-stream";
         }
 
-        String etag = fileService.calcEtag(resource);
-
-        return ResponseEntity.ok()
+        return ResponseEntity
+                .ok()
                 .eTag(etag)
+                .lastModified(lastModified)
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
                 .body(resource);
-        // TODO add not modified response
     }
 
     // ***********************************************************************

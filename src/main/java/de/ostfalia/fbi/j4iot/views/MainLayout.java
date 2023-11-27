@@ -51,6 +51,8 @@ import java.util.Optional;
  */
 public class MainLayout extends AppLayout {
 
+    // ************************************************************************
+
     private static final Logger log = LoggerFactory.getLogger(MainLayout.class);
     private final SecurityService securityService;
     private final ProjectService projectService;
@@ -156,22 +158,19 @@ public class MainLayout extends AppLayout {
 
         Footer footer = new Footer();
         footer.setClassName("drawer-footer");
+        footer.setWidthFull();
         VerticalLayout footerLayout = new VerticalLayout();
         footer.add(footerLayout);
+        footerLayout.setWidthFull();
         configureProjectSelection(projectSelection, deviceSelection);
         configureDeviceSelection(deviceSelection);
         footerLayout.add(projectSelection, deviceSelection);
-
-        // TODO make the selections in the main nav drawer full width + put them in footer
-        projectSelection.setWidthFull();
-        deviceSelection.setWidthFull();
-        footerLayout.setWidthFull();
-        footer.setWidthFull();
 
         addToDrawer(header, overviewNav, projectNav, deviceNav, adminNav, footer);
     }
 
     private void configureProjectSelection(ComboBox<String> projectSelection, ComboBox<String> deviceSelection) {
+        projectSelection.setWidthFull();
         projectSelection.setPlaceholder("Project");
         projectSelection.setTooltipText("Select the active project");
         projectSelection.setPrefixComponent(VaadinIcon.SEARCH.create());
@@ -192,6 +191,7 @@ public class MainLayout extends AppLayout {
     }
 
     private void configureDeviceSelection(ComboBox<String> deviceSelection) {
+        deviceSelection.setWidthFull();
         deviceSelection.setPlaceholder("Device");
         deviceSelection.setTooltipText("Select the active device");
         deviceSelection.setPrefixComponent(VaadinIcon.SEARCH.create());
@@ -204,7 +204,7 @@ public class MainLayout extends AppLayout {
                 isValueChangeEnabled = false;
                 String deviceName = comboBoxStringComponentValueChangeEvent.getValue();
                 if (currentProject != null) {
-                    Optional<Device> device = deviceService.findByAuthAndProjectIdAndName(currentProject.getId(), deviceName);
+                    Optional<Device> device = deviceService.findByUserAuthAndProjectIdAndName(currentProject.getId(), deviceName);
                     setCurrentDevice(device.orElse(null));
                 } else {
                     setCurrentDevice(null);
@@ -276,7 +276,7 @@ public class MainLayout extends AppLayout {
         navItemDeviceSettings.setVisible(currentDevice != null);
 
         if (currentDevice != null) {
-            navItemDeviceDashboard.setPath(DeviceDashboard.class, DeviceDashboard.getRouteParametersWithDevice(currentDevice));
+            navItemDeviceDashboard.setPath(DeviceDashboard.class, DeviceDashboard.getRouteParameters(currentDevice));
             navItemDeviceSettings.setPath(DeviceSettings.class, DeviceSettings.getRouteParameters(currentProject, currentDevice));
         } else {
             navItemDeviceDashboard.setPath(DefaultView.class);
@@ -314,7 +314,7 @@ public class MainLayout extends AppLayout {
         boolean oldIsValueChangeEnabled = isValueChangeEnabled;
         isValueChangeEnabled = false;
         if (currentProject != null) {
-            deviceSelection.setItems(deviceService.findAllNamesByAuthAndProjectId(currentProject.getId()));
+            deviceSelection.setItems(deviceService.findAllNamesByUserAuthAndProjectId(currentProject.getId()));
         } else {
             deviceSelection.setItems();
         }
@@ -357,6 +357,10 @@ public class MainLayout extends AppLayout {
     @Override
     protected void afterNavigation() {
         super.afterNavigation();
+        updatePageTitle();;
+    }
+
+    public void updatePageTitle() {
         viewTitle.setText(getCurrentPageTitle());
     }
 

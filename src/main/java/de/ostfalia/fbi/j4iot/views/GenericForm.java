@@ -22,7 +22,9 @@ import java.util.Optional;
 
 public abstract class GenericForm<T extends AbstractEntity> extends Div implements BeforeEnterObserver, AfterNavigationObserver {
 
-    private Logger log = LoggerFactory.getLogger(GenericForm.class);
+    // ***********************************************************************
+
+    private final Logger log = LoggerFactory.getLogger(GenericForm.class);
     public final static String ID_ROUTING_PARAMETER = "id";
     protected final Class<T> modelClass;
     protected RouteParameters routeParameters = null;
@@ -33,6 +35,7 @@ public abstract class GenericForm<T extends AbstractEntity> extends Div implemen
     protected T item;
     protected BeanValidationBinder<T> binder;
 
+    // ***********************************************************************
 
     public GenericForm(Class<T> modelClass) {
         this.modelClass = modelClass;
@@ -88,6 +91,8 @@ public abstract class GenericForm<T extends AbstractEntity> extends Div implemen
         add(buttonLayout);
     }
 
+    // ***********************************************************************
+
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         routeParameters = event.getRouteParameters();
@@ -114,6 +119,7 @@ public abstract class GenericForm<T extends AbstractEntity> extends Div implemen
         if (parent.isPresent()) {
             if (parent.get() instanceof MainLayout m) {
                 toExecute.execute(m);
+                m.updatePageTitle();
             } else {
                 log.error("withMainLayout: found a parent which is not a MainLayout");
             }
@@ -151,6 +157,8 @@ public abstract class GenericForm<T extends AbstractEntity> extends Div implemen
         }
     }
 
+    // ***********************************************************************
+
     protected void populateForm(T item) {
         this.item = item;
         binder.setBean(item);
@@ -168,5 +176,7 @@ public abstract class GenericForm<T extends AbstractEntity> extends Div implemen
     protected abstract T load(long id);
 
     protected abstract T save();
+
+    // ***********************************************************************
 
 }

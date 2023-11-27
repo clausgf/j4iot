@@ -109,6 +109,7 @@ public abstract class GenericList<T extends AbstractEntity> extends VerticalLayo
         if (parent.isPresent()) {
             if (parent.get() instanceof MainLayout m) {
                 toExecute.execute(m);
+                m.updatePageTitle();
             } else {
                 log.error("withMainLayout: found a parent which is not a MainLayout");
             }

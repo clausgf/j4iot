@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
-@RequestMapping(value = "/api")
+@RequestMapping("${j4iot.api.path:/api}")
 public class RestDeviceApi {
 
     // ***********************************************************************

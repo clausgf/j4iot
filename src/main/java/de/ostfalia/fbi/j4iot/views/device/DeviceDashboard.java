@@ -17,27 +17,31 @@ import de.ostfalia.fbi.j4iot.views.MainLayout;
 import jakarta.annotation.security.PermitAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
 
 import java.util.Optional;
 
 @PermitAll
 @Route(value="/devices/:id/dashboard", layout = MainLayout.class)
-public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnterObserver {
+public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnterObserver, AfterNavigationObserver {
 
-    Logger log = LoggerFactory.getLogger(DeviceDashboard.class);
+    // ***********************************************************************
 
+    private final Logger log = LoggerFactory.getLogger(DeviceDashboard.class);
     public final static String ID_ROUTING_PARAMETER = "id";
+    protected RouteParameters routeParameters = null;
 
     private final TextField description = new TextField("description");
     private final TextField location = new TextField("location");
 
     private Device item;
-
-    private final DeviceService service;
     private final BeanValidationBinder<Device> binder;
 
+    private final DeviceService service;
 
-    public static RouteParameters getRouteParametersWithDevice(Device device) {
+    // ***********************************************************************
+
+    public static RouteParameters getRouteParameters(Device device) {
         if (device != null) {
             return new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, device.getId()));
         } else {
@@ -45,12 +49,13 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
         }
     }
 
-    public static void navigateToWithDevice(Device device) {
-        assert device != null;
-        RouteParameters rp = new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, device.getId()));
-        UI.getCurrent().navigate(DeviceSettings.class, rp);
+    public static void navigateTo(Device device) {
+        Assert.notNull(device, "NavigateTo requires a device");
+        RouteParameters rp = getRouteParameters(device);
+        UI.getCurrent().navigate(DeviceDashboard.class, rp);
     }
 
+    // ***********************************************************************
 
     public DeviceDashboard(DeviceService service) {
         this.service = service;
@@ -62,7 +67,7 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
         Scroller scroller = new Scroller(layout);
         scroller.addClassName("scroller");
         scroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
-        scroller.getStyle().set("padding", "var(--lumo-space-m)");
+        scroller.getStyle().set("padding", "var(--lumo-space-m)");  // TODO move to css
         add(scroller);
         layout.add(createOverviewCard());
 
@@ -70,51 +75,7 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
         binder.bindInstanceFields(this);
     }
 
-
-    private void setMainLayoutDevice(Device device) {
-        Optional<Component> parent = getParent();
-        if (parent.isPresent()) {
-            if (parent.get() instanceof MainLayout m) {
-                m.setCurrentDevice(device);
-            }
-        } else {
-            log.error("setMainLayoutDevice did not find a parent component!");
-        }
-    }
-
-    public void populateForm(Device item) {
-        this.item = item;
-        binder.readBean(item);
-        setMainLayoutDevice(item);
-
-
-    }
-
-    @Override
-    public void beforeEnter(BeforeEnterEvent event) {
-        Optional<Long> id = event.getRouteParameters().getLong(ID_ROUTING_PARAMETER);
-        if (id.isPresent()) {
-            Optional<Device> item = service.findByAuthAndId(id.get());
-            if (item.isPresent()) {
-                populateForm(item.get());
-            } else {
-                Notification.show("The requested item was not found, id=" + id.get());
-                populateForm(null);
-            }
-        } else {
-            log.error("Invalid route parameter, expected projectId");
-            populateForm(null);
-        }
-    }
-
-    @Override
-    public String getPageTitle() {
-        String title = "Dashboard for unknown";
-        if (item != null) {
-            title = "Dashboard for " + item.getName() + " in " + item.getProject().getName();
-        }
-        return title;
-    }
+    // ***********************************************************************
 
     public Div createOverviewCard() {
         Div card = new Div();
@@ -138,5 +99,56 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
 
         return card;
     }
+
+    // ***********************************************************************
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        routeParameters = event.getRouteParameters();
+        item = null;
+        Optional<Long> id = routeParameters.getLong(ID_ROUTING_PARAMETER);
+        if (id.isPresent()) {
+            item = service.findByUserAuthAndId(id.get()).orElse(null);
+        } else {
+            log.error("Invalid route parameter, expected id");
+        }
+        if ( item == null ) {
+            Notification.show("The requested item was not found, id=" + id.get());
+        }
+    }
+
+    @Override
+    public void afterNavigation(AfterNavigationEvent event) {
+        Optional<Component> parent = getParent();
+        if (parent.isPresent()) {
+            if (parent.get() instanceof MainLayout m) {
+                m.setCurrentDevice(item);
+                m.updatePageTitle();
+            } else {
+                log.error("setMainLayoutDevice: found a parent which is not a MainLayout");
+            }
+        } else {
+            log.error("setMainLayoutDevice parent not found");
+        }
+
+        populateForm();
+    }
+
+    @Override
+    public String getPageTitle() {
+        String title = "Dashboard for unknown";
+        if (item != null) {
+            title = String.format("Dashboard: %s (%s)", item.getName(), item.getProject().getName());
+        }
+        return title;
+    }
+
+    // ***********************************************************************
+
+    public void populateForm() {
+        binder.setBean(item);
+    }
+
+    // ***********************************************************************
 
 }

@@ -83,9 +83,9 @@ public class DeviceSettings extends GenericForm<Device> implements HasDynamicTit
         //addHeader("Device");
         FormLayout main = addForm();
         Arrays.asList(createdAt, updatedAt, lastProvisioningRequestAt, lastProvisionedAt, lastSeenAt).forEach(e -> e.setReadOnly(true));
-        Arrays.asList(name, description, tags, location).forEach(e -> main.setColspan(e, 2));
         main.setColspan(deviceTokens, 2);
         main.setColspan(addDeviceTokenButton, 2);
+        Arrays.asList(name, description, tags, location).forEach(e -> main.setColspan(e, 2));
         addSectionTo(main, "General settings", name, description, tags, createdAt, updatedAt);
         addSectionTo(main, "Specific settings", location, lastSeenAt, provisioningApproved, lastProvisioningRequestAt, lastProvisionedAt);
 
@@ -165,6 +165,7 @@ public class DeviceSettings extends GenericForm<Device> implements HasDynamicTit
     @Override
     protected void populateForm(Device item) {
         super.populateForm(item);
+        name.setReadOnly( item != null );
         if (item == null) {
             deviceTokens.setItems(new LinkedList<>());
         } else {
@@ -175,7 +176,7 @@ public class DeviceSettings extends GenericForm<Device> implements HasDynamicTit
 
     @Override
     protected Device load(long id) {
-        return deviceService.findByAuthAndId(id).orElse(null);
+        return deviceService.findByUserAuthAndId(id).orElse(null);
     }
 
     @Override

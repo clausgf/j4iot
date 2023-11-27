@@ -17,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping(value = "/api")
+@RequestMapping("${j4iot.api.path:/api}")
 public class RestProvisioningApi {
 
     private final Logger log = LoggerFactory.getLogger(RestProvisioningApi.class);
