@@ -10,24 +10,29 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.Instant;
 
 @Entity
-@Table(indexes = {
-        @Index(columnList = "token", unique = true) // token really has to be unique
-})
+@Table(indexes = { @Index(columnList = "token", unique = true) })
 public class DeviceToken extends AbstractEntity {
-    @ManyToOne
-    @JsonIgnoreProperties({"project", "tokens"})
-    @NotNull Device device;
 
-    @NotNull @NotEmpty
-    private String token;
+    // ***********************************************************************
+
     @CreationTimestamp
     private Instant createdAt;
     @UpdateTimestamp
     private Instant updatedAt;
 
+    @ManyToOne
+    @JsonIgnoreProperties({"project", "tokens"})
+    @NotNull Device device;
+
+    // tokens are unique to enable finding the device by token
+    // this could be realized by encoding the device id into the token
+    @NotNull @NotEmpty @Column(length = 160, unique = true)
+    private String token;
+
     @NotNull private Instant expiresAt;
     private Instant lastUseAt = null;
 
+    // ***********************************************************************
 
     public DeviceToken() {
         this.createdAt = Instant.now();
@@ -42,10 +47,11 @@ public class DeviceToken extends AbstractEntity {
         this.expiresAt = expiresAt;
     }
 
+    // ***********************************************************************
+
     public Device getDevice() {
         return device;
     }
-
     public void setDevice(Device device) {
         this.device = device;
     }
@@ -53,7 +59,6 @@ public class DeviceToken extends AbstractEntity {
     public String getToken() {
         return token;
     }
-
     public void setToken(String token) {
         this.token = token;
     }
@@ -61,9 +66,15 @@ public class DeviceToken extends AbstractEntity {
     public Instant getCreatedAt() {
         return createdAt;
     }
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public Instant getExpiresAt() {
@@ -79,4 +90,7 @@ public class DeviceToken extends AbstractEntity {
     public void setLastUseAt(Instant lastUseAt) {
         this.lastUseAt = lastUseAt;
     }
+
+    // ***********************************************************************
+
 }

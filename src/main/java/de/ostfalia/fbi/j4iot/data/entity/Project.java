@@ -8,37 +8,53 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 @Entity
-@Table(indexes = {
-        @Index(columnList = "name", unique = true)
-})
+@Table(
+        indexes = {
+            @Index(columnList = "name", unique = true),
+            @Index(columnList = "tags")
+        })
 public class Project extends AbstractEntity {
-    @NotNull @NotEmpty @Column(length = 40, unique = true)
-    @Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9_\\-+]*$", message = "Name must start with a letter or a number, the rest can also contain plus, minus or underscores.")
-    private String name = "";
-    @NotNull private String description = "";
-    @NotNull private String tags = "";
+
+    // ***********************************************************************
+
     @CreatedDate
     private Instant createdAt;
     @LastModifiedDate // TODO https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#auditing.annotations
     private Instant updatedAt;
 
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable
+    private Set<User> users = new HashSet<>();
+
+    @Column(length = 80, unique = true)
+    @Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9_\\-+]*$", message = "Name must start with a letter or a number, the rest can also contain plus, minus or underscores.")
+    @NotNull @NotEmpty
+    private String name = "";
+
+    @NotNull private String description = "";
+    @NotNull private String tags = "";
+
     @NotNull private Integer defaultProvisioningTokenLength = 64;
     @NotNull private Integer defaultProvisioningTokenExpiresInSeconds = 365*24*60*60;
     @NotNull private Integer defaultDeviceTokenLength = 32;
     @NotNull private Integer defaultDeviceTokenExpiresInSeconds = 7*24*60*60;
+
     @NotNull private Boolean autocreateDevices = true;
     @NotNull private Boolean provisioningAutoapproval = true;
 
-    @NotNull private String deviceTagsAvailable = "";
-
-    @OneToMany(mappedBy = "project", fetch = FetchType.EAGER) @OrderBy("createdAt desc")
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.EAGER) @OrderBy("createdAt desc")
     private List<ProvisioningToken> provisioningTokens = new LinkedList<>();
+
     @OneToMany(mappedBy = "project") @OrderBy("name")
     private List<Device> devices = new LinkedList<>();
+
+    // ***********************************************************************
 
     public Project() {
         this.createdAt = Instant.now();
@@ -52,6 +68,17 @@ public class Project extends AbstractEntity {
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
+
+    // ***********************************************************************
+
+    public Set<User> getUsers() {
+        return users;
+    }
+    public void setUsers(Set<User> users) {
+        this.users = users;
+    }
+    public void addUser(User u) { this.users.add(u); u.getProjects().add(this); }
+    public void removeUser(User u) { this.users.remove(u); u.getProjects().remove(this); }
 
     public String getName() {
         return name;
@@ -77,9 +104,15 @@ public class Project extends AbstractEntity {
     public Instant getCreatedAt() {
         return createdAt;
     }
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public Integer getDefaultProvisioningTokenLength() {
@@ -124,18 +157,20 @@ public class Project extends AbstractEntity {
         this.provisioningAutoapproval = provisioningAutoapproval;
     }
 
-    public String getDeviceTagsAvailable() {
-        return deviceTagsAvailable;
-    }
-    public void setDeviceTagsAvailable(String deviceTagsAvailable) {
-        this.deviceTagsAvailable = deviceTagsAvailable;
-    }
-
     public List<ProvisioningToken> getProvisioningTokens() {
         return provisioningTokens;
+    }
+    public void setProvisioningTokens(List<ProvisioningToken> provisioningTokens) {
+        this.provisioningTokens = provisioningTokens;
     }
 
     public List<Device> getDevices() {
         return devices;
     }
+    public void setDevices(List<Device> devices) {
+        this.devices = devices;
+    }
+
+    // ***********************************************************************
+
 }

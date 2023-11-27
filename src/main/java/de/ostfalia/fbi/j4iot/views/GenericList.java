@@ -11,16 +11,14 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
-import com.vaadin.flow.router.BeforeEnterEvent;
-import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.RouteParameters;
+import com.vaadin.flow.router.*;
 import de.ostfalia.fbi.j4iot.data.entity.AbstractEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
-public abstract class GenericList<T extends AbstractEntity> extends VerticalLayout implements BeforeEnterObserver {
+public abstract class GenericList<T extends AbstractEntity> extends VerticalLayout implements BeforeEnterObserver, AfterNavigationObserver {
 
     private Logger log = LoggerFactory.getLogger(GenericList.class);
     protected final Class<T> modelClass;
@@ -28,6 +26,7 @@ public abstract class GenericList<T extends AbstractEntity> extends VerticalLayo
     protected TextField filterText = new TextField();
     protected Grid<T> grid;
     protected ConfirmDialog confirmDeleteDialog = createConfirmDeleteDialog();
+
 
     public GenericList(Class<T> modelClass) {
         this.modelClass = modelClass;
@@ -53,13 +52,7 @@ public abstract class GenericList<T extends AbstractEntity> extends VerticalLayo
         toolbar.add(refreshButton);
 
         Button addButton = new Button("Add");
-        addButton.addClickListener(click -> {
-                    if (addItem()) {
-                        Notification.show("Item added");
-                    } else {
-                        Notification.show("Could not add item");
-                    }
-                });
+        addButton.addClickListener( click -> addItem() );
         toolbar.add(addButton);
 
         return toolbar;
@@ -86,9 +79,9 @@ public abstract class GenericList<T extends AbstractEntity> extends VerticalLayo
 
     protected void configureGrid() {
         grid.addComponentColumn(item -> {
-                    Button b1 = new Button(new Icon(VaadinIcon.EDIT), click -> { editItem(item); });
+                    Button b1 = new Button(new Icon(VaadinIcon.EDIT), click -> editItem(item) );
                     b1.setTooltipText("Edit list item");
-                    Button b2 = new Button(new Icon(VaadinIcon.TRASH), click -> { confirmDeleteItem(item); });
+                    Button b2 = new Button(new Icon(VaadinIcon.TRASH), click -> confirmDeleteItem(item) );
                     b2.setTooltipText("Delete list item");
                     return new HorizontalLayout(b1, b2);
                 })
@@ -98,24 +91,14 @@ public abstract class GenericList<T extends AbstractEntity> extends VerticalLayo
         grid.getColumns().forEach(col -> col.setAutoWidth(true));
     }
 
-    protected void confirmDeleteItem(T item) {
-        confirmDeleteDialog.addCancelListener(event -> {
-            Notification.show("Canceled item deletion");
-        });
-        confirmDeleteDialog.addConfirmListener(event -> {
-            if (removeItem(item)) {
-                Notification.show("Item deleted");
-            } else {
-                Notification.show("Could not delete the item");
-            }
-            updateItems();
-        });
-        confirmDeleteDialog.open();
-    }
-
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         routeParameters = event.getRouteParameters();
+    }
+
+    @Override
+    public void afterNavigation(AfterNavigationEvent event) {
+        updateItems();
     }
 
     @FunctionalInterface
@@ -134,12 +117,27 @@ public abstract class GenericList<T extends AbstractEntity> extends VerticalLayo
         }
     }
 
-    protected abstract boolean addItem();
+    protected void confirmDeleteItem(T item) {
+        confirmDeleteDialog.addCancelListener(event -> {
+            Notification.show("Canceled item deletion");
+        });
+        confirmDeleteDialog.addConfirmListener(event -> {
+            if (removeItem(item)) {
+                Notification.show("Item deleted");
+            } else {
+                Notification.show("Could not delete the item");
+            }
+            updateItems();
+        });
+        confirmDeleteDialog.open();
+    }
+
+    protected abstract void addItem();
 
     protected abstract void editItem(T item);
 
     protected abstract boolean removeItem(T item);
 
-    abstract protected void updateItems();
+    protected abstract void updateItems();
 }
 

@@ -10,24 +10,29 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.Instant;
 
 @Entity
-@Table(indexes = {
-        @Index(columnList = "token", unique = true) // todo token should be unique by project_id+token
-})
+@Table( indexes = { @Index(columnList = "token", unique = true) })
 public class ProvisioningToken extends AbstractEntity {
-    @ManyToOne
-    @JsonIgnoreProperties({"provisioningTokens", "devices"})
-    @NotNull Project project;
 
-    @NotNull @NotEmpty @Column(unique = true)
-    private String token;
+    // ***********************************************************************
+
     @CreationTimestamp
     private Instant createdAt;
     @UpdateTimestamp
     private Instant updatedAt;
 
+    @ManyToOne
+    @JsonIgnoreProperties({"provisioningTokens", "devices"})
+    @NotNull Project project;
+
+    // tokens are unique to enable finding the device by token
+    // this could be realized by encoding the device id into the token
+    @NotNull @NotEmpty @Column(length = 160, unique = true)
+    private String token;
+
     @NotNull private Instant expiresAt;
     private Instant lastUseAt = null;
 
+    // ***********************************************************************
 
     public ProvisioningToken() {
         this.createdAt = Instant.now();
@@ -41,6 +46,8 @@ public class ProvisioningToken extends AbstractEntity {
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
     }
+
+    // ***********************************************************************
 
     public Project getProject() {
         return project;
@@ -59,9 +66,15 @@ public class ProvisioningToken extends AbstractEntity {
     public Instant getCreatedAt() {
         return createdAt;
     }
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public Instant getExpiresAt() {
@@ -77,5 +90,7 @@ public class ProvisioningToken extends AbstractEntity {
     public void setLastUseAt(Instant lastUseAt) {
         this.lastUseAt = lastUseAt;
     }
+
+    // ***********************************************************************
 
 }

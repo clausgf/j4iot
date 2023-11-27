@@ -13,34 +13,49 @@ import java.util.LinkedList;
 import java.util.List;
 
 @Entity()
-@Table(indexes = {
-        @Index(columnList = "name", unique = true) // TODO unique constraint should be project_id+name
-})
+@Table(
+        indexes = {
+                @Index(columnList = "name"),
+                @Index(columnList = "tags"),
+                @Index(columnList = "location"),
+                @Index(columnList = "lastSeenAt")
+        },
+        uniqueConstraints = {
+                @UniqueConstraint(name = "UniqueNameAndProject", columnNames = { "name", "project_id" })
+        })
 public class Device extends AbstractEntity {
-    @ManyToOne
-    @JsonIgnoreProperties({"provisioningTokens", "devices"})
-    @NotNull Project project;
 
-    @NotNull @NotEmpty @Column(length = 40, unique = true) // TODO siehe oben
-    @Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9_\\-+]*$", message = "Name must start with a letter or a number, the rest can also contain plus, minus or underscores.")
-    private String name = "";
-    @NotNull private String description = "";
-    @NotNull private String location = "";
-    @NotNull private String tags = "";
+    // ***********************************************************************
+
     @CreatedDate
     private Instant createdAt;
     @LastModifiedDate
     private Instant updatedAt;
 
+    @ManyToOne
+    @JsonIgnoreProperties({"provisioningTokens", "devices"})
+    @NotNull
+    Project project;
+
+    @Column(length = 80)
+    @Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9_\\-+]*$", message = "Name must start with a letter or a number, the rest can also contain plus, minus or underscores.")
+    @NotNull @NotEmpty
+    private String name = "";
+
+    @NotNull private String description = "";
+    @NotNull private String location = "";
+    @NotNull private String tags = "";
+
     @NotNull private Boolean provisioningApproved = false;
+
     private Instant lastProvisioningRequestAt = null;
     private Instant lastProvisionedAt = null;
-
     private Instant lastSeenAt = null;
 
-    @OneToMany(mappedBy = "device", fetch = FetchType.EAGER) @OrderBy("createdAt desc")
+    @OneToMany(mappedBy = "device", cascade = CascadeType.ALL, fetch = FetchType.EAGER) @OrderBy("createdAt desc")
     private List<DeviceToken> deviceTokens = new LinkedList<>();
 
+    // ***********************************************************************
 
     public Device() {
         this.createdAt = Instant.now();
@@ -64,6 +79,8 @@ public class Device extends AbstractEntity {
         this.updatedAt = Instant.now();
         this.tags = tags;
     }
+
+    // ***********************************************************************
 
     public Project getProject() {
         return project;
@@ -103,9 +120,15 @@ public class Device extends AbstractEntity {
     public Instant getCreatedAt() {
         return createdAt;
     }
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public Boolean getProvisioningApproved() {
@@ -139,4 +162,10 @@ public class Device extends AbstractEntity {
     public List<DeviceToken> getDeviceTokens() {
         return deviceTokens;
     }
+    public void setDeviceTokens(List<DeviceToken> deviceTokens) {
+        this.deviceTokens = deviceTokens;
+    }
+
+    // ***********************************************************************
+
 }

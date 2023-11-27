@@ -29,7 +29,8 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
-import de.ostfalia.fbi.j4iot.data.service.IotService;
+import de.ostfalia.fbi.j4iot.data.service.DeviceService;
+import de.ostfalia.fbi.j4iot.data.service.ProjectService;
 import de.ostfalia.fbi.j4iot.data.service.UserService;
 import de.ostfalia.fbi.j4iot.security.SecurityService;
 import de.ostfalia.fbi.j4iot.views.about.AboutView;
@@ -42,7 +43,6 @@ import de.ostfalia.fbi.j4iot.views.user.UserMasterDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.vaadin.lineawesome.LineAwesomeIcon;
 
 import java.util.Optional;
 
@@ -53,28 +53,36 @@ public class MainLayout extends AppLayout {
 
     private static final Logger log = LoggerFactory.getLogger(MainLayout.class);
     private final SecurityService securityService;
-    private final IotService iotService;
+    private final ProjectService projectService;
+    private final DeviceService deviceService;
     private final UserService userService;
 
     private Project currentProject;
     private Device currentDevice;
     private boolean isValueChangeEnabled = true;
 
+    // TODO find a better way to determine the url from the configuration
+    // TODO secure all springdoc endpoints!
+    private String springDocSwaggerUrl = "/../api-doc/swagger-ui/index.html";
+
     private H2 viewTitle;
     private final Dialog passwordChangeDialog = createPasswordChangeDialog();
     ComboBox<String> projectSelection = new ComboBox<>();
     ComboBox<String> deviceSelection = new ComboBox<>();
-    SideNavItem navItemProjectDevices = new SideNavItem("Devices in project", DefaultView.class, LineAwesomeIcon.MICROCHIP_SOLID.create());
-    SideNavItem navItemProjectDashboard = new SideNavItem("Project dashboard", DefaultView.class, LineAwesomeIcon.TACHOMETER_ALT_SOLID.create());
-    SideNavItem navItemProjectSettings = new SideNavItem("Project settings", DefaultView.class, LineAwesomeIcon.COG_SOLID.create());
-    SideNavItem navItemDeviceDashboard = new SideNavItem("Device dashboard", DefaultView.class, LineAwesomeIcon.TACHOMETER_ALT_SOLID.create());
-    SideNavItem navItemDeviceSettings = new SideNavItem("Device settings", DefaultView.class, LineAwesomeIcon.COG_SOLID.create());
+    SideNavItem navItemProjectDevices = new SideNavItem("Devices in project", DefaultView.class, VaadinIcon.ROCKET.create());
+    SideNavItem navItemProjectDashboard = new SideNavItem("Project dashboard", DefaultView.class, VaadinIcon.DASHBOARD.create());
+    SideNavItem navItemProjectSettings = new SideNavItem("Project settings", DefaultView.class, VaadinIcon.SLIDERS.create());
+    SideNavItem navItemDeviceDashboard = new SideNavItem("Device dashboard", DefaultView.class, VaadinIcon.DASHBOARD.create());
+    SideNavItem navItemDeviceSettings = new SideNavItem("Device settings", DefaultView.class, VaadinIcon.SLIDERS.create());
 
+    // ************************************************************************
 
-    public MainLayout(SecurityService securityService, IotService iotService, UserService userService) {
+    public MainLayout(SecurityService securityService, ProjectService projectService, DeviceService deviceService, UserService userService) {
         this.securityService = securityService;
-        this.iotService = iotService;
+        this.projectService = projectService;
+        this.deviceService = deviceService;
         this.userService = userService;
+
         this.currentProject = null;
         this.currentDevice = null;
         setPrimarySection(Section.DRAWER);
@@ -82,6 +90,8 @@ public class MainLayout extends AppLayout {
         addDrawerContent();
         setCurrentProject(null);
     }
+
+    // ************************************************************************
 
     private void addHeaderContent() {
         DrawerToggle toggle = new DrawerToggle();
@@ -112,6 +122,55 @@ public class MainLayout extends AppLayout {
         userSubMenu.addItem("Logout", e -> securityService.logout());
     }
 
+    // ************************************************************************
+
+    private void addDrawerContent() {
+        H1 appName = new H1("j4iot");
+        appName.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
+        Header header = new Header(appName);
+        header.setClassName("drawer-header");
+
+        SideNav overviewNav = new SideNav();
+        overviewNav.setLabel("Overview");
+        overviewNav.addItem(new SideNavItem("My Projects", ProjectList.class, VaadinIcon.CONNECT_O.create()));
+        overviewNav.addItem(new SideNavItem("My Devices", DeviceList.class, VaadinIcon.ROCKET.create()));
+        overviewNav.addItem(new SideNavItem("Visualization", DefaultView.class, VaadinIcon.SPLINE_CHART.create()));
+        overviewNav.addItem(new SideNavItem("API doc", springDocSwaggerUrl, VaadinIcon.BOOK.create())); // https://www.baeldung.com/spring-rest-openapi-documentation
+        overviewNav.addItem(new SideNavItem("About", AboutView.class, VaadinIcon.INFO_CIRCLE.create()));
+
+        SideNav projectNav = new SideNav();
+        projectNav.setLabel("Project");
+        projectNav.addItem(navItemProjectDevices);
+        projectNav.addItem(navItemProjectDashboard);
+        projectNav.addItem(navItemProjectSettings);
+
+        SideNav deviceNav = new SideNav();
+        deviceNav.setLabel("Device");
+        deviceNav.addItem(navItemDeviceDashboard);
+        deviceNav.addItem(navItemDeviceSettings);
+
+        SideNav adminNav = new SideNav();
+        adminNav.setLabel("Admin");
+        //adminNav.setCollapsible(true);
+        adminNav.addItem(new SideNavItem("Users", UserMasterDetail.class, VaadinIcon.USERS.create()));
+
+        Footer footer = new Footer();
+        footer.setClassName("drawer-footer");
+        VerticalLayout footerLayout = new VerticalLayout();
+        footer.add(footerLayout);
+        configureProjectSelection(projectSelection, deviceSelection);
+        configureDeviceSelection(deviceSelection);
+        footerLayout.add(projectSelection, deviceSelection);
+
+        // TODO make the selections in the main nav drawer full width + put them in footer
+        projectSelection.setWidthFull();
+        deviceSelection.setWidthFull();
+        footerLayout.setWidthFull();
+        footer.setWidthFull();
+
+        addToDrawer(header, overviewNav, projectNav, deviceNav, adminNav, footer);
+    }
+
     private void configureProjectSelection(ComboBox<String> projectSelection, ComboBox<String> deviceSelection) {
         projectSelection.setPlaceholder("Project");
         projectSelection.setTooltipText("Select the active project");
@@ -124,7 +183,7 @@ public class MainLayout extends AppLayout {
                 //log.info("projectSelection old: project={} device={}", currentProject, currentDevice);
                 isValueChangeEnabled = false;
                 String projectName = comboBoxStringComponentValueChangeEvent.getValue();
-                Optional<Project> project = iotService.findProjectByName(projectName);
+                Optional<Project> project = projectService.findByAuthAndName(projectName);
                 setCurrentProject(project.orElse(null));
                 isValueChangeEnabled = true;
                 //log.info("projectSelection new: project={} device={}", currentProject, currentDevice);
@@ -145,7 +204,7 @@ public class MainLayout extends AppLayout {
                 isValueChangeEnabled = false;
                 String deviceName = comboBoxStringComponentValueChangeEvent.getValue();
                 if (currentProject != null) {
-                    Optional<Device> device = iotService.findDeviceByProjectIdAndNameAndName(currentProject.getId(), deviceName);
+                    Optional<Device> device = deviceService.findByAuthAndProjectIdAndName(currentProject.getId(), deviceName);
                     setCurrentDevice(device.orElse(null));
                 } else {
                     setCurrentDevice(null);
@@ -156,44 +215,7 @@ public class MainLayout extends AppLayout {
         });
     }
 
-    private void addDrawerContent() {
-        H1 appName = new H1("j4iot");
-        appName.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
-        Header header = new Header(appName);
-        header.setClassName("drawer-header");
-
-        SideNav overviewNav = new SideNav();
-        overviewNav.setLabel("Overview");
-        overviewNav.addItem(new SideNavItem("My Projects", ProjectList.class, LineAwesomeIcon.PROJECT_DIAGRAM_SOLID.create()));
-        overviewNav.addItem(new SideNavItem("My Devices", DeviceList.class, LineAwesomeIcon.MICROCHIP_SOLID.create()));
-        overviewNav.addItem(new SideNavItem("About", AboutView.class, LineAwesomeIcon.INFO_CIRCLE_SOLID.create()));
-
-        SideNav projectNav = new SideNav();
-        projectNav.setLabel("Project");
-        projectNav.addItem(navItemProjectDevices);
-        projectNav.addItem(navItemProjectDashboard);
-        projectNav.addItem(navItemProjectSettings);
-
-        SideNav deviceNav = new SideNav();
-        deviceNav.setLabel("Device");
-        deviceNav.addItem(navItemDeviceDashboard);
-        deviceNav.addItem(navItemDeviceSettings);
-
-        SideNav adminNav = new SideNav();
-        adminNav.setLabel("Admin");
-        //adminNav.setCollapsible(true);
-        adminNav.addItem(new SideNavItem("Users", UserMasterDetail.class, LineAwesomeIcon.USERS_SOLID.create()));
-
-        Footer footer = new Footer();
-        footer.setClassName("drawer-footer");
-        VerticalLayout footerLayout = new VerticalLayout();
-        footer.add(footerLayout);
-        configureProjectSelection(projectSelection, deviceSelection);
-        configureDeviceSelection(deviceSelection);
-        footerLayout.add(projectSelection, deviceSelection);
-
-        addToDrawer(header, overviewNav, projectNav, deviceNav, adminNav, footer);
-    }
+    // ************************************************************************
 
     private Dialog createPasswordChangeDialog() {
         VerticalLayout dialogLayout = new VerticalLayout();
@@ -219,7 +241,7 @@ public class MainLayout extends AppLayout {
         Button save = new Button("Save", event -> {
             try {
                 String username = securityService.getAuthenticatedUsername();
-                userService.changePassword(username, oldPassword.getValue(), newPassword.getValue());
+                userService.updatePassword(username, oldPassword.getValue(), newPassword.getValue());
                 Notification.show("Password changed!");
             } catch (UsernameNotFoundException e) {
                 Notification.show("Wrong username/password, data not modified!");
@@ -233,15 +255,17 @@ public class MainLayout extends AppLayout {
         return dialog;
     }
 
+    // ************************************************************************
+
     private void setNavItems() {
         navItemProjectDevices.setVisible(currentProject != null);
         navItemProjectDashboard.setVisible(currentProject != null);
         navItemProjectSettings.setVisible(currentProject != null);
 
         if (currentProject != null) {
-            navItemProjectDevices.setPath(DeviceList.class, DeviceList.getRouteParametersWithProject(currentProject));
+            navItemProjectDevices.setPath(DeviceList.class, DeviceList.getRouteParameters(currentProject));
             navItemProjectDashboard.setPath(DefaultView.class);
-            navItemProjectSettings.setPath(ProjectSettings.class, ProjectSettings.getRouteParametersWithProject(currentProject));
+            navItemProjectSettings.setPath(ProjectSettings.class, ProjectSettings.getRouteParameters(currentProject));
         } else {
             navItemProjectDevices.setPath(DefaultView.class);
             navItemProjectDashboard.setPath(DefaultView.class);
@@ -253,7 +277,7 @@ public class MainLayout extends AppLayout {
 
         if (currentDevice != null) {
             navItemDeviceDashboard.setPath(DeviceDashboard.class, DeviceDashboard.getRouteParametersWithDevice(currentDevice));
-            navItemDeviceSettings.setPath(DeviceSettings.class, DeviceSettings.getRouteParametersWithDevice(currentDevice));
+            navItemDeviceSettings.setPath(DeviceSettings.class, DeviceSettings.getRouteParameters(currentProject, currentDevice));
         } else {
             navItemDeviceDashboard.setPath(DefaultView.class);
             navItemDeviceSettings.setPath(DefaultView.class);
@@ -277,10 +301,12 @@ public class MainLayout extends AppLayout {
         }
     }
 
+    // ************************************************************************
+
     public void updateProjectNames() {
         boolean oldIsValueChangeEnabled = isValueChangeEnabled;
         isValueChangeEnabled = false;
-        projectSelection.setItems(iotService.findAllProjectNames(""));
+        projectSelection.setItems(projectService.findAllNamesByAuth());
         isValueChangeEnabled = oldIsValueChangeEnabled;
     }
 
@@ -288,12 +314,14 @@ public class MainLayout extends AppLayout {
         boolean oldIsValueChangeEnabled = isValueChangeEnabled;
         isValueChangeEnabled = false;
         if (currentProject != null) {
-            deviceSelection.setItems(iotService.searchAllDeviceNamesByProjectId(currentProject.getId(), ""));
+            deviceSelection.setItems(deviceService.findAllNamesByAuthAndProjectId(currentProject.getId()));
         } else {
             deviceSelection.setItems();
         }
         isValueChangeEnabled = oldIsValueChangeEnabled;
     }
+
+    // ************************************************************************
 
     public void setCurrentProject(Project newProject) {
         if (newProject != null) {
@@ -324,6 +352,8 @@ public class MainLayout extends AppLayout {
         }
     }
 
+    // ************************************************************************
+
     @Override
     protected void afterNavigation() {
         super.afterNavigation();
@@ -341,5 +371,7 @@ public class MainLayout extends AppLayout {
         }
         return title;
     }
+
+    // ************************************************************************
 
 }

@@ -12,7 +12,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.router.*;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
-import de.ostfalia.fbi.j4iot.data.service.IotService;
+import de.ostfalia.fbi.j4iot.data.service.DeviceService;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
 import jakarta.annotation.security.PermitAll;
 import org.slf4j.Logger;
@@ -33,7 +33,7 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
 
     private Device item;
 
-    private final IotService service;
+    private final DeviceService service;
     private final BeanValidationBinder<Device> binder;
 
 
@@ -52,7 +52,7 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
     }
 
 
-    public DeviceDashboard(IotService service) {
+    public DeviceDashboard(DeviceService service) {
         this.service = service;
         addClassName("dashboard");
         setSizeFull();
@@ -94,7 +94,7 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
     public void beforeEnter(BeforeEnterEvent event) {
         Optional<Long> id = event.getRouteParameters().getLong(ID_ROUTING_PARAMETER);
         if (id.isPresent()) {
-            Optional<Device> item = service.findDeviceById(id.get());
+            Optional<Device> item = service.findByAuthAndId(id.get());
             if (item.isPresent()) {
                 populateForm(item.get());
             } else {

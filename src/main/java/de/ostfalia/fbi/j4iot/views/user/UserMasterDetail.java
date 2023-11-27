@@ -187,7 +187,7 @@ public class UserMasterDetail extends Div implements BeforeEnterObserver {
         dialog.getFooter().add(cancel);
         Button save = new Button("Save", event -> {
             try {
-                userService.changePassword(user, oldPassword.getValue(), newPassword.getValue());
+                userService.updatePassword(user, oldPassword.getValue(), newPassword.getValue());
                 Notification.show("Password changed, don't forget to save the user data!");
             } catch (UsernameNotFoundException e) {
                 Notification.show("Wrong username/password, data not modified!");

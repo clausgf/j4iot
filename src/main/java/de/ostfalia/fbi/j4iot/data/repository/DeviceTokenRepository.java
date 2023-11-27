@@ -11,5 +11,5 @@ public interface DeviceTokenRepository extends JpaRepository<DeviceToken, Long> 
     //List<ProvisioningToken> findAll();
 
     //@Query("select d.name from Device d where d.project = :project")
-    Optional<DeviceToken> findOneByToken(@Param("token") String token);
+    Optional<DeviceToken> findByToken(@Param("token") String token);
 }

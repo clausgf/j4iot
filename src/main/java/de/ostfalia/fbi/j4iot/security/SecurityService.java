@@ -27,30 +27,43 @@ public class SecurityService {
         return authenticationContext.getAuthenticatedUser(UserDetails.class);
     }
 
-    public Optional<User> getAuthenticatedUser() {
-        UserDetails userDetails = authenticationContext.getAuthenticatedUser(UserDetails.class).get();
-        return userRepository.findOneByName(userDetails.getUsername());
+    public String getAuthenticatedUsername() {
+        Optional<UserDetails> userDetails = getAuthenticatedUserDetails();
+        return userDetails.map(UserDetails::getUsername).orElse(null);
     }
 
-    public String getAuthenticatedUsername() {
-        String username = "";
+    public Long getAuthenticatedUserId() {
         Optional<UserDetails> userDetails = getAuthenticatedUserDetails();
         if (userDetails.isPresent()) {
-            username = userDetails.get().getUsername();
+            Optional<User> user = userRepository.findByName(userDetails.get().getUsername());
+            return user.map(User::getId).orElse(null);
         }
-        return username;
+        return null;
+    }
+
+    public Optional<User> getAuthenticatedUser() {
+        Optional<UserDetails> userDetails = getAuthenticatedUserDetails();
+        if (userDetails.isPresent()) {
+            return userRepository.findByName(userDetails.get().getUsername());
+        }
+        return Optional.empty();
     }
 
     public String getAuthenticatedUserFullName() {
-        String username = getAuthenticatedUsername();
-        Optional<User> optUser = userRepository.findOneByName(username);
+        Optional<User> optUser = getAuthenticatedUser();
         if (optUser.isPresent()) {
             User u = optUser.get();
             if (!u.getFirstName().isEmpty() && !u.getLastName().isEmpty()) {
-                username = u.getFirstName() + " " + u.getLastName();
+                return u.getFirstName() + " " + u.getLastName();
+            } else if (!u.getFirstName().isEmpty()) {
+                return u.getFirstName();
+            } else if (!u.getLastName().isEmpty()) {
+                return u.getLastName();
+            } else {
+                return u.getName();
             }
         }
-        return username;
+        return null;
     }
 
     public void logout() {

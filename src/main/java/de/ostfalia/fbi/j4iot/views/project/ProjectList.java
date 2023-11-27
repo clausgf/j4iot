@@ -7,14 +7,13 @@ import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
-import de.ostfalia.fbi.j4iot.data.service.IotService;
+import de.ostfalia.fbi.j4iot.data.service.ProjectService;
 import de.ostfalia.fbi.j4iot.views.GenericList;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
 import de.ostfalia.fbi.j4iot.views.device.DeviceList;
 import jakarta.annotation.security.PermitAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.vaadin.lineawesome.LineAwesomeIcon;
 
 // TODO base this list on a generic one
 @PermitAll
@@ -22,28 +21,32 @@ import org.vaadin.lineawesome.LineAwesomeIcon;
 @PageTitle("Projects")
 public class ProjectList extends GenericList<Project> {
 
-    public final static String ID_ROUTING_PARAMETER = "id";
-    private Logger log = LoggerFactory.getLogger(ProjectList.class);
-    private final IotService service;
+    // ************************************************************************
 
+    private Logger log = LoggerFactory.getLogger(ProjectList.class);
+    private final ProjectService service;
+
+    // ************************************************************************
 
     public static void navigateTo() {
         UI.getCurrent().navigate(ProjectList.class);
     }
 
+    // ************************************************************************
 
-    public ProjectList(IotService service) {
+    public ProjectList(ProjectService service) {
         super(Project.class);
         this.service = service;
-        updateItems();
     }
+
+    // ************************************************************************
 
     @Override
     protected void configureGrid() {
         grid.setColumns();
         grid.addComponentColumn(project ->
-                new Button(LineAwesomeIcon.LINK_SOLID.create(), click -> {
-                    DeviceList.navigateToProject(project);
+                new Button(VaadinIcon.ROCKET.create(), click -> {
+                    DeviceList.navigateTo(project);
                 }))
                 .setTooltipGenerator(item -> "Navigate to device")
                 .setHeader("Devices").setFlexGrow(0);
@@ -62,6 +65,8 @@ public class ProjectList extends GenericList<Project> {
         super.configureGrid(); // call the base class method at the end to allow further modifications
     }
 
+    // ************************************************************************
+
     @Override
     protected void confirmDeleteItem(Project item) {
         confirmDeleteDialog.setHeader("Danger: Delete Project " + item.getName());
@@ -70,20 +75,22 @@ public class ProjectList extends GenericList<Project> {
         super.confirmDeleteItem(item);
     }
 
+    // ************************************************************************
+
     @Override
-    protected boolean addItem() {
-        return false;
+    protected void addItem() {
+        ProjectSettings.navigateTo(null);
     }
 
     @Override
     protected void editItem(Project item) {
-        ProjectSettings.navigateToProject(item);
+        ProjectSettings.navigateTo(item);
     }
 
     @Override
     protected boolean removeItem(Project item) {
         try {
-            service.deleteProject(item);
+            service.delete(item);
         } catch (Exception e) {
             log.error("Error in removeItem(Project id={} name={}): {}", item.getId(), item.getName(), e.getMessage());
             return false;
@@ -96,7 +103,10 @@ public class ProjectList extends GenericList<Project> {
         if (service == null) {
             grid.setItems();
         } else {
-            grid.setItems(service.findAllProjects(filterText.getValue()));
+            grid.setItems(service.findAllByAuth());
         }
     }
+
+    // ************************************************************************
+
 }

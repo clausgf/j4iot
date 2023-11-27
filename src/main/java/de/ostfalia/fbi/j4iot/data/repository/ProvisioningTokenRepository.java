@@ -9,7 +9,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProvisioningTokenRepository extends JpaRepository<ProvisioningToken, Long> {
-    Optional<ProvisioningToken> findOneByProjectAndToken(@Param("project") Project project, @Param("token") String token);
+
+    Optional<ProvisioningToken> findByToken(@Param("token") String token);
 
     List<ProvisioningToken> findAllByProject(Project project);
 }

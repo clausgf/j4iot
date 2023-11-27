@@ -1,7 +1,7 @@
 package de.ostfalia.fbi.j4iot.security;
 
 import de.ostfalia.fbi.j4iot.data.entity.DeviceToken;
-import de.ostfalia.fbi.j4iot.data.service.IotService;
+import de.ostfalia.fbi.j4iot.data.service.DeviceService;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -19,19 +19,21 @@ import java.util.LinkedList;
 public class DeviceAuthenticationFilter extends GenericFilter {
 
     public static final String DEVICE_API_AUTHORITY = "DEVICE_API";
-    private final String AUTH_TOKEN_HEADER_NAME = "Authentication";
+    private final String AUTH_TOKEN_HEADER_NAME = "Authorization";
     private final Logger log = LoggerFactory.getLogger(RestSecurityConfig.class);
-    private final IotService iotService;
+    private final DeviceService iotService;
 
-    public DeviceAuthenticationFilter(IotService iotService) {this.iotService = iotService;}
+    public DeviceAuthenticationFilter(DeviceService iotService) {this.iotService = iotService;}
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         try {
             String token = extractToken((HttpServletRequest) request);
             log.info("DeviceAuthenticationFilter filtering url={} token={}", ((HttpServletRequest) request).getRequestURL(), token);
-            Authentication authentication = authenticate(token);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            if (token != null) {
+                Authentication authentication = authenticate(token);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
         } catch (Exception e) { /*
             HttpServletResponse httpResponse = (HttpServletResponse) response;
             httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -47,10 +49,10 @@ public class DeviceAuthenticationFilter extends GenericFilter {
 
     private String extractToken(HttpServletRequest request) throws BadCredentialsException {
         String token = request.getHeader(AUTH_TOKEN_HEADER_NAME);
-        if (token == null) {
-            throw new BadCredentialsException("Invalid device token in " + AUTH_TOKEN_HEADER_NAME + " header.");
+        if (token != null) {
+            //throw new BadCredentialsException("Invalid device token in " + AUTH_TOKEN_HEADER_NAME + " header.");
+            token = token.replaceAll("(?i)bearer ", "");
         }
-        token = token.replaceAll("(?i)bearer ", "");
         return token;
     }
 

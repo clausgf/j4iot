@@ -1,5 +1,6 @@
 package de.ostfalia.fbi.j4iot;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -25,4 +26,5 @@ public class DefaultConfiguration {
     public void setPassword(String password) {
         this.password = password;
     }
+
 }

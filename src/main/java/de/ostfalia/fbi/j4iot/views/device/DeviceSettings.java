@@ -10,12 +10,15 @@ import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.*;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
 import de.ostfalia.fbi.j4iot.data.entity.DeviceToken;
-import de.ostfalia.fbi.j4iot.data.service.IotService;
+import de.ostfalia.fbi.j4iot.data.entity.Project;
+import de.ostfalia.fbi.j4iot.data.service.DeviceService;
+import de.ostfalia.fbi.j4iot.data.service.ProjectService;
 import de.ostfalia.fbi.j4iot.views.GenericForm;
 import de.ostfalia.fbi.j4iot.views.InstantRenderer;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
@@ -29,13 +32,14 @@ import java.util.LinkedList;
 import java.util.Optional;
 
 @PermitAll
-@PageTitle("Device settings")
-@Route(value="/devices/:id/settings", layout = MainLayout.class)
-public class DeviceSettings extends GenericForm<Device> implements BeforeEnterObserver {
+@Route(value="/projects/:projectId/devices/:id?/settings", layout = MainLayout.class)
+public class DeviceSettings extends GenericForm<Device> implements HasDynamicTitle, BeforeEnterObserver {
 
     private Logger log = LoggerFactory.getLogger(DeviceSettings.class);
-    public final static String ID_ROUTING_PARAMETER = "id";
-    IotService service;
+    public final static String PROJECT_ID_ROUTING_PARAMETER = "projectId";
+    ProjectService projectService;
+    DeviceService deviceService;
+    Project project;
 
     TextField name = new TextField("Device name");
     TextArea description = new TextArea("Description");
@@ -52,25 +56,29 @@ public class DeviceSettings extends GenericForm<Device> implements BeforeEnterOb
     Button addDeviceTokenButton = new Button("Add device token");
 
 
-    public static RouteParameters getRouteParametersWithDevice(Device device) {
-        if (device != null) {
-            return new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, device.getId()));
+    public static RouteParameters getRouteParameters(Project project, Device device) {
+        if ((project != null) && (device != null)) {
+            return new RouteParameters(
+                new RouteParam(PROJECT_ID_ROUTING_PARAMETER, project.getId()),
+                new RouteParam(ID_ROUTING_PARAMETER, device.getId()));
+        } else if ((project != null) && (device == null)) {
+            return new RouteParameters(new RouteParam(PROJECT_ID_ROUTING_PARAMETER, project.getId()));
         } else {
             return RouteParameters.empty();
         }
     }
 
-    public static void navigateToWithDevice(Device device) {
-        assert device != null;
-        RouteParameters rp = new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, device.getId()));
+    public static void navigateTo(Project project, Device device) {
+        RouteParameters rp = getRouteParameters(project, device);
         UI.getCurrent().navigate(DeviceSettings.class, rp);
     }
 
 
-    public DeviceSettings(IotService service) {
+    public DeviceSettings(ProjectService projectService, DeviceService deviceService) {
         super(Device.class);
+        this.projectService = projectService;
+        this.deviceService = deviceService;
         binder.bindInstanceFields(this);
-        this.service = service;
 
         //addHeader("Device");
         FormLayout main = addForm();
@@ -106,13 +114,52 @@ public class DeviceSettings extends GenericForm<Device> implements BeforeEnterOb
         addDeviceTokenButton.addClickListener(event -> {
             if (binder.getBean() != null) {
                 Device device = binder.getBean();
-                service.addDeviceToken(device);
+                deviceService.addNewDeviceToken(device);
                 deviceTokens.setItems(device.getDeviceTokens());
             }
         });
         addSectionTo(main, "Device Tokens", deviceTokens, addDeviceTokenButton);
 
         addFooter();
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        super.beforeEnter(event);
+        project = null;
+        Optional<Long> projectId = routeParameters.getLong(PROJECT_ID_ROUTING_PARAMETER);
+        if (projectId.isPresent()) {
+            project = projectService.findByAuthAndId(projectId.get()).orElse(null);
+        }
+        if (project == null) {
+            String msg = "No access to project or not found id=" + projectId.orElse(null);
+            log.error(msg);
+            Notification.show(msg);
+        }
+    }
+
+    @Override
+    public String getPageTitle() {
+        String title = "Create device in project " + project.getName();
+        if (item != null) {
+            title = "Device settings: " + item.getName();
+        }
+        return title;
+    }
+
+    @Override
+    protected void saveCreate() {
+        try {
+            if (item == null) {
+                item = new Device();
+                item.setProject(project);
+            }
+            super.saveCreate();
+        } catch (Exception e) {
+            String msg = "Exception creating item instance class=" + modelClass.getName() + ": " + e.getMessage();
+            log.error(msg);
+            Notification.show(msg).addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
     }
 
     @Override
@@ -127,30 +174,13 @@ public class DeviceSettings extends GenericForm<Device> implements BeforeEnterOb
     }
 
     @Override
-    protected Device save(Device item) {
-        return service.updateDevice(item);
+    protected Device load(long id) {
+        return deviceService.findByAuthAndId(id).orElse(null);
     }
 
     @Override
-    protected Optional<Device> load(Long id) {
-        return service.findDeviceById(id);
-    }
-
-    @Override
-    public void beforeEnter(BeforeEnterEvent event) {
-        super.beforeEnter(event);
-        item = null;
-        Optional<Long> id = routeParameters.getLong(ID_ROUTING_PARAMETER);
-        if (id.isPresent()) {
-            item = load(id.get()).orElse(null);
-            if (item == null) {
-                Notification.show("The requested item was not found, id=" + id.get());
-            }
-        } else {
-            String msg = "Invalid route parameter, expected projectId";
-            Notification.show(msg);
-            log.error(msg);
-        }
+    protected Device save() {
+        return deviceService.updateDevice(item);
     }
 
 }

@@ -22,34 +22,48 @@ import java.util.Map;
 import java.util.Set;
 
 @Entity
-@Table(name = "users",
-    indexes = {
-        @Index(columnList = "name", unique = true)
-})
+@Table( name = "users",
+        indexes = {
+            @Index(columnList = "name", unique = true)
+        })
 public class User extends AbstractEntity {
-    @Column(length = 40, unique = true)
-    @Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9_\\-+]*$", message = "Name must start with a letter or a number, the rest can also contain plus, minus or underscores.")
-    @NotNull @NotEmpty private String name;
+
+    // ***********************************************************************
+
     @CreationTimestamp
     private Instant createdAt;
     @UpdateTimestamp
     private Instant updatedAt;
-    @NotNull private Boolean isEnabled = true;
 
+    @Column(length = 80, unique = true)
+    @Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9_\\-+]*$", message = "Name must start with a letter or a number, the rest can also contain plus, minus or underscores.")
+    @NotNull @NotEmpty
+    private String name;
+
+    @Transient
+    String password = null;
+    @Column(length = 80)
     @NotNull @NotEmpty @JsonIgnore private String encodedPassword;
+
+    @Column(length = 80)
     @NotNull private String firstName = "";
+    @Column(length = 80)
     @NotNull private String lastName = "";
+    @Column(length = 160)
     @NotNull @Email private String email = "";
 
+    @NotNull private Boolean isEnabled = true;
     @NotNull private Instant expiresAt;
     private Instant lastLoginAt = null;
+    private Instant lastLoginFailureAt = null;
+    private Long loginFailures = 0L;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id"))
+    @ManyToMany()
+    @JoinTable
     private Set<Role> roles = new HashSet<>();
+
+    @ManyToMany(mappedBy = "users")
+    private Set<Project> projects = new HashSet<>();
 
     // ***********************************************************************
 
@@ -71,6 +85,8 @@ public class User extends AbstractEntity {
         this.email = email;
         this.expiresAt = expiresAt;
         this.lastLoginAt = null;
+        this.lastLoginFailureAt = null;
+        this.loginFailures = 0L;
     }
 
     public static UserBuilder builder() {
@@ -94,9 +110,15 @@ public class User extends AbstractEntity {
     public Instant getCreatedAt() {
         return createdAt;
     }
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public Boolean getEnabled() {
@@ -106,6 +128,12 @@ public class User extends AbstractEntity {
         isEnabled = enabled;
     }
 
+    public String getPassword() {
+        return password;
+    }
+    public void setPassword(String password) {
+        this.password = password;
+    }
     public String getEncodedPassword() {
         return encodedPassword;
     }
@@ -148,8 +176,40 @@ public class User extends AbstractEntity {
         this.lastLoginAt = lastLoginAt;
     }
 
+    public Instant getLastLoginFailureAt() {
+        return lastLoginFailureAt;
+    }
+    public void setLastLoginFailureAt(Instant lastLoginFailureAt) {
+        this.lastLoginFailureAt = lastLoginFailureAt;
+    }
+
+    public Long getLoginFailures() {
+        return loginFailures;
+    }
+    public void setLoginFailures(Long loginFailures) {
+        this.loginFailures = loginFailures;
+    }
+
     public Set<Role> getRoles() {
         return roles;
+    }
+    public void setRoles(Set<Role> roles) {
+        this.roles = roles;
+    }
+    public void addRole(Role role){
+        this.roles.add(role);
+        role.getUsers().add(this);
+    }
+    public void removeRole(Role role){
+        this.roles.remove(role);
+        role.getUsers().remove(this);
+    }
+
+    public Set<Project> getProjects() {
+        return projects;
+    }
+    public void setProjects(Set<Project> projects) {
+        this.projects = projects;
     }
 
     // ***********************************************************************
@@ -163,7 +223,7 @@ public class User extends AbstractEntity {
         private String lastName = "";
         private String email = "";
         private Instant expiresAt = Instant.now().plus(50*365, ChronoUnit.DAYS);
-        //private Set<Role> roles = new HashSet<>();
+        private Set<Role> roles = new HashSet<>();
         private final PasswordEncoder passwordEncoder;
 
         public UserBuilder() {
@@ -184,9 +244,15 @@ public class User extends AbstractEntity {
         public UserBuilder lastName(String lastName) { this.lastName = lastName; return this; }
         public UserBuilder email(String email) { this.email = email; return this; }
         public UserBuilder expiresAt(Instant expiresAt) { this.expiresAt = expiresAt; return this; }
+        public UserBuilder addRole(Role role) { this.roles.add(role); return this; }
         public User build() {
-            return new User(name, isEnabled, encodedPassword,
+            User u = new User(name, isEnabled, encodedPassword,
                     firstName, lastName, email, expiresAt);
+            roles.forEach(u::addRole);
+            return u;
         }
     }
+
+    // ***********************************************************************
+
 }

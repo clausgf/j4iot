@@ -23,11 +23,12 @@ import java.util.Optional;
 public abstract class GenericForm<T extends AbstractEntity> extends Div implements BeforeEnterObserver, AfterNavigationObserver {
 
     private Logger log = LoggerFactory.getLogger(GenericForm.class);
+    public final static String ID_ROUTING_PARAMETER = "id";
     protected final Class<T> modelClass;
     protected RouteParameters routeParameters = null;
 
     protected Button resetButton = new Button ("Reset");
-    protected Button saveButton = new Button("Save");
+    protected Button saveCreateButton = new Button("Save/Create");
 
     protected T item;
     protected BeanValidationBinder<T> binder;
@@ -38,7 +39,8 @@ public abstract class GenericForm<T extends AbstractEntity> extends Div implemen
         addClassName("generic-form");
 
         binder = new BeanValidationBinder<>(modelClass);
-        binder.addStatusChangeListener(e -> saveButton.setEnabled(binder.isValid()));
+        binder.setBean(item);
+        binder.addStatusChangeListener(e -> saveCreateButton.setEnabled(binder.isValid()));
     }
 
     protected void addHeader(String title) {
@@ -77,10 +79,10 @@ public abstract class GenericForm<T extends AbstractEntity> extends Div implemen
         resetButton.addClickListener(event -> reset());
         buttonLayout.add(resetButton);
 
-        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        saveButton.addClickShortcut(Key.ENTER);
-        saveButton.addClickListener(event -> validateAndSave());
-        buttonLayout.add(saveButton);
+        saveCreateButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveCreateButton.addClickShortcut(Key.ENTER);
+        saveCreateButton.addClickListener(event -> saveCreate());
+        buttonLayout.add(saveCreateButton);
 
         buttonLayout.addClassName("generic-form-footer");
         add(buttonLayout);
@@ -89,6 +91,14 @@ public abstract class GenericForm<T extends AbstractEntity> extends Div implemen
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         routeParameters = event.getRouteParameters();
+        item = null;
+        Optional<Long> id = routeParameters.getLong(ID_ROUTING_PARAMETER);
+        if (id.isPresent()) {
+            item = load(id.get());
+            if (item == null) {
+                Notification.show("The requested item was not found, id=" + id.get());
+            }
+        }
     }
 
     @Override
@@ -112,36 +122,51 @@ public abstract class GenericForm<T extends AbstractEntity> extends Div implemen
         }
     }
 
-    protected void reset() {
-        binder.readBean(item);
-    }
-
-    protected void validateAndSave() {
-        if (binder.writeBeanIfValid(item)) {
-            try {
-                item = save(item);
-                if (item != null) {
-                    Notification.show("Item saved");
-                    populateForm(item);
-                } else {
-                    Notification.show("Failure saving item").addThemeVariants(NotificationVariant.LUMO_ERROR);
-                }
-            } catch (Exception e) {
-                log.error("Error saving item: {}", e.getMessage());
-                Notification.show("Failure saving item: " + e.getMessage()).addThemeVariants(NotificationVariant.LUMO_ERROR);
+    protected void saveCreate() {
+        try {
+            if (item == null) {
+                item = modelClass.newInstance();
             }
-        } else {
-            Notification.show("Failure saving item: Validation failed");
+            if (binder.writeBeanIfValid(item)) {
+                try {
+                    item = save();
+                    if (item != null) {
+                        Notification.show("Item saved");
+                        populateForm(item);
+                    } else {
+                        Notification.show("Failure saving item").addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    }
+                } catch (Exception e) {
+                    String msg = "Failure saving item: " + e.getMessage();
+                    log.error(msg);
+                    Notification.show(msg).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                }
+            } else {
+                Notification.show("Failure saving item: Validation failed").addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        } catch (Exception e) {
+            String msg = "Exception creating item instance class=" + modelClass.getName() + ": " + e.getMessage();
+            log.error(msg);
+            Notification.show(msg).addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
 
     protected void populateForm(T item) {
         this.item = item;
-        binder.readBean(item);
+        binder.setBean(item);
+        saveCreateButton.setText(item == null ? "Create" : "Save");
     }
 
-    protected abstract Optional<T> load(Long id);
+    protected void reset() {
+        //binder.readBean(item);
+        if (item != null) {
+            item = load(item.getId());
+        }
+        populateForm(item);
+    }
 
-    protected abstract T save(T item);
+    protected abstract T load(long id);
+
+    protected abstract T save();
 
 }

@@ -1,46 +1,39 @@
 package de.ostfalia.fbi.j4iot.views.project;
 
-import com.vaadin.flow.component.Component;
-import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.formlayout.FormLayout;
-import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.html.H3;
-import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridVariant;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.data.binder.BeanValidationBinder;
-import com.vaadin.flow.router.*;
+import com.vaadin.flow.router.HasDynamicTitle;
+import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouteParam;
+import com.vaadin.flow.router.RouteParameters;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
-import de.ostfalia.fbi.j4iot.data.service.IotService;
+import de.ostfalia.fbi.j4iot.data.entity.ProvisioningToken;
+import de.ostfalia.fbi.j4iot.data.service.ProjectService;
+import de.ostfalia.fbi.j4iot.views.GenericForm;
+import de.ostfalia.fbi.j4iot.views.InstantRenderer;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
 import jakarta.annotation.security.PermitAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.vaadin.addon.stefan.clipboard.ClientsideClipboard;
 
-import java.util.Optional;
+import java.util.Arrays;
+import java.util.LinkedList;
 
 @PermitAll
-@PageTitle("Project settings")
-@Route(value="/projects/:id/settings", layout = MainLayout.class)
-public class ProjectSettings extends FormLayout implements BeforeEnterObserver {
+@Route(value="/projects/:id?/settings", layout = MainLayout.class)
+public class ProjectSettings extends GenericForm<Project> implements HasDynamicTitle {
 
     private Logger log = LoggerFactory.getLogger(ProjectSettings.class);
-    protected final Class<Project> modelClass;
-    protected Button reset = new Button ("Reset");
-    protected Button save = new Button("Save");
-
-    protected Project item;
-    protected BeanValidationBinder<Project> binder;
-
-    public final static String ID_ROUTING_PARAMETER = "id";
-    IotService service;
+    ProjectService service;
 
     TextField name = new TextField("Project name");
     TextField description = new TextField("Description");
@@ -50,8 +43,11 @@ public class ProjectSettings extends FormLayout implements BeforeEnterObserver {
     Checkbox autocreateDevices = new Checkbox("Autocreate devices");
     Checkbox provisioningAutoapproval = new Checkbox("Provisioning autoapproval");
 
+    Grid<ProvisioningToken> provisioningTokens = new Grid<>(ProvisioningToken.class);
+    Button addProvisioningTokenButton = new Button("Add provisioning token");
 
-    public static RouteParameters getRouteParametersWithProject(Project project) {
+
+    public static RouteParameters getRouteParameters(Project project) {
         if (project != null) {
             return new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, project.getId()));
         } else {
@@ -59,116 +55,87 @@ public class ProjectSettings extends FormLayout implements BeforeEnterObserver {
         }
     }
 
-    public static void navigateToProject(Project project) {
-        assert project != null;
-        RouteParameters rp = new RouteParameters(new RouteParam(ID_ROUTING_PARAMETER, project.getId()));
+    public static void navigateTo(Project project) {
+        RouteParameters rp = getRouteParameters(project);
         UI.getCurrent().navigate(ProjectSettings.class, rp);
     }
 
 
-    public ProjectSettings(IotService service) {
-        //super(Project.class);
-        this.modelClass = Project.class;
-        addClassName("generic-form");
-        setResponsiveSteps(new ResponsiveStep("0", 1));
-        binder = new BeanValidationBinder<>(modelClass);
+    public ProjectSettings(ProjectService service) {
+        super(Project.class);
+        this.service = service;
         binder.bindInstanceFields(this);
 
-        this.service = service;
-        createdAt.setReadOnly(true);
-        updatedAt.setReadOnly(true);
+        FormLayout main = addForm();
+        Arrays.asList(createdAt, updatedAt).forEach(e -> e.setReadOnly(true));
+        Arrays.asList(name, description, tags).forEach(e -> main.setColspan(e, 2));
+        main.setColspan(provisioningTokens, 2);
+        main.setColspan(addProvisioningTokenButton, 2);
+        addSectionTo(main, "General settings", name, description, tags, createdAt, updatedAt);
+        addSectionTo(main, "Specific settings", autocreateDevices, provisioningAutoapproval);
 
-        H2 header = new H2("Project");
-        VerticalLayout sectionHeader = new VerticalLayout(header);
-        sectionHeader.setClassName("generic-form-header");
-        add(sectionHeader);
-
-        H3 sectionGeneralTitle = new H3("General settings");
-        VerticalLayout sectionGeneral = new VerticalLayout(sectionGeneralTitle, name, description, tags, createdAt, updatedAt);
-        sectionGeneral.setClassName("generic-form-main");
-        add(sectionGeneral);
-
-        H3 sectionSpecificTitle = new H3("Specific settings");
-        VerticalLayout sectionSpecific = new VerticalLayout(sectionSpecificTitle, autocreateDevices, provisioningAutoapproval);
-        sectionSpecific.setClassName("generic-form-main");
-        add(sectionSpecific);
-
-        VerticalLayout sectionButtons = new VerticalLayout(createButtonsLayout());
-        sectionButtons.setClassName("generic-form-footer");
-        add(sectionButtons);
-    }
-
-    protected HorizontalLayout createButtonsLayout() {
-        HorizontalLayout buttonLayout = new HorizontalLayout();
-
-        reset.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        reset.addClickShortcut(Key.ESCAPE);
-        reset.addClickListener(event -> binder.readBean(item));
-        buttonLayout.add(reset);
-
-        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        save.addClickShortcut(Key.ENTER);
-        save.addClickListener(event -> validateAndSave());
-        binder.addStatusChangeListener(e -> save.setEnabled(binder.isValid()));
-        buttonLayout.add(save);
-
-        return buttonLayout;
-    }
-
-    public void populateForm(Project item) {
-        this.item = item;
-        binder.readBean(item);
-        setMainLayoutProject(item);
-    }
-
-    protected void validateAndSave() {
-        if (binder.writeBeanIfValid(item)) {
-            try {
-                item = save(item);
-                if (item != null) {
-                    Notification.show("Item saved");
-                    populateForm(item);
-                } else {
-                    Notification.show("Failure saving item").addThemeVariants(NotificationVariant.LUMO_ERROR);
-                }
-            } catch (Exception e) {
-                log.error("Error saving item: {}", e.getMessage());
-                Notification.show("Failure saving item: " + e.getMessage()).addThemeVariants(NotificationVariant.LUMO_ERROR);
+        provisioningTokens.setColumns();
+        provisioningTokens.addColumn("token")
+                .setTooltipGenerator(ProvisioningToken::getToken)
+                .setHeader("Token");
+        provisioningTokens.addColumn(new InstantRenderer<>(ProvisioningToken::getExpiresAt))
+                .setTooltipGenerator(item -> item.getExpiresAt().toString())
+                .setHeader("Expires");
+        provisioningTokens.addComponentColumn(item ->
+                        new Button(new Icon(VaadinIcon.CLIPBOARD), click -> {
+                            ClientsideClipboard.writeToClipboard(item.getToken());
+                        }))
+                .setTooltipGenerator(item -> "Copy token to clipboard")
+                .setAutoWidth(true).setFlexGrow(0);
+        provisioningTokens.addComponentColumn(item ->
+                        new Button(new Icon(VaadinIcon.TRASH),click -> {
+                            item.getProject().getProvisioningTokens().remove(item);
+                            provisioningTokens.setItems(item.getProject().getProvisioningTokens());
+                        }))
+                .setTooltipGenerator(item -> "Delete token")
+                .setAutoWidth(true).setFlexGrow(0);
+        provisioningTokens.setAllRowsVisible(true);
+        provisioningTokens.addThemeVariants(GridVariant.LUMO_COMPACT);
+        addProvisioningTokenButton.addClickListener(event -> {
+            if (binder.getBean() != null) {
+                Project project = binder.getBean();
+                service.addNewProvisioningToken(project);
+                provisioningTokens.setItems(project.getProvisioningTokens());
             }
-        } else {
-            Notification.show("Failure saving item: Validation failed");
-        }
-    }
+        });
+        addSectionTo(main, "Provisioning Tokens", provisioningTokens, addProvisioningTokenButton);
 
-    protected Project save(Project item) {
-        return service.updateProject(item);
+        addFooter();
     }
 
     @Override
-    public void beforeEnter(BeforeEnterEvent event) {
-        Optional<Long> id = event.getRouteParameters().getLong(ID_ROUTING_PARAMETER);
-        if (id.isPresent()) {
-            Optional<Project> item = service.findProjectById(id.get());
-            if (item.isPresent()) {
-                populateForm(item.get());
-            } else {
-                Notification.show("The requested item was not found, id=" + id.get());
-                populateForm(null);
-            }
-        } else {
-            log.error("Invalid route parameter, expected projectId");
-            populateForm(null);
+    public String getPageTitle() {
+        String title = "Create project";
+        if (item != null) {
+            title = "Project settings: " + item.getName();
         }
+        return title;
     }
 
-    private void setMainLayoutProject(Project project) {
-        Optional<Component> parent = getParent();
-        if (parent.isPresent()) {
-            if (parent.get() instanceof MainLayout m) {
-                m.setCurrentProject(project);
-            }
+    @Override
+    public void populateForm(Project item) {
+        super.populateForm(item);
+        if (item == null) {
+            provisioningTokens.setItems(new LinkedList<>());
         } else {
-            log.error("setMainLayoutProject did not find a parent component!");
+            provisioningTokens.setItems(item.getProvisioningTokens());
         }
+        withMainLayout(m -> m.setCurrentProject(item));
     }
+
+    @Override
+    protected Project load(long id) {
+        return service.findByAuthAndId(id).orElse(null);
+    }
+
+    @Override
+    protected Project save() {
+        return service.updateOrCreate(item);
+    }
+
 }

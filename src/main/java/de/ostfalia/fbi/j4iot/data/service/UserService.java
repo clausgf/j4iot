@@ -45,72 +45,88 @@ public class UserService implements UserDetailsService {
         return new DelegatingPasswordEncoder(encodingId, encoders);
     }
 
+    // ***********************************************************************
+    // UserDetailsService
+    // ***********************************************************************
+
+    @Transactional
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findOneByName(username)
+        User user = userRepository.findByName(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-        return new org.springframework.security.core.userdetails.User(
+
+        Set<GrantedAuthority> authorities = new HashSet<>();
+        for (Role role : user.getRoles()) {
+            authorities.add(new SimpleGrantedAuthority(role.getName()));
+        }
+
+        org.springframework.security.core.userdetails.User udUser =
+            new org.springframework.security.core.userdetails.User(
                 user.getName(),
                 user.getEncodedPassword(),
                 user.getEnabled(),
                 user.getExpiresAt().isAfter(Instant.now()),
                 true, true,
-                getAuthorities(user.getRoles()) );
+                authorities);
+        return udUser;
     }
 
-    private Set<GrantedAuthority> getAuthorities(Set<Role> roles) {
-        Set<GrantedAuthority> authorities = new HashSet<>();
-        for (Role role : roles) {
-            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getName()));
-        }
-        return authorities;
-    }
+    // ***********************************************************************
 
     public List<User> findAll() {
         return userRepository.findAll();
-    }
-
-    public Optional<User> findByName(String name) {
-        return userRepository.findOneByName(name);
     }
 
     public Optional<User> findById(Long id) {
         return userRepository.findById(id);
     }
 
+    public User updateOrCreate(User user) {
+        String password = user.getPassword();
+        if (password != null) {
+            user.setEncodedPassword(passwordEncoder.encode(password));
+        }
+        return userRepository.save(user);
+    }
+
+    public void deleteById(Long id) {
+        userRepository.deleteById(id);
+    }
+
+    // ***********************************************************************
+
+    public Optional<User> findByName(String name) {
+        return userRepository.findByName(name);
+    }
+
+    @Deprecated
     public void createUser(User user, String password) {
         user.setEncodedPassword(passwordEncoder.encode(password));
         userRepository.save(user);
     }
 
+    @Deprecated
     public void updateUser(User user) {
         userRepository.save(user);
     }
 
-    public void deleteUser(String username) {
-        User user = userRepository.findOneByName(username)
-                        .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-        userRepository.delete(user);
-    }
-
     @Transactional
-    public void changePassword(String username, String oldPassword, String newPassword) {
-        User user = userRepository.findOneByName(username)
+    public void updatePassword(String username, String oldPassword, String newPassword) {
+        User user = userRepository.findByName(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Username/password incorrect: " + username));
-        changePassword(user, oldPassword, newPassword);
+        updatePassword(user, oldPassword, newPassword);
         userRepository.save(user);
     }
 
-    public void changePassword(User user, String oldPassword, String newPassword) {
+    @Deprecated
+    public void updatePassword(User user, String oldPassword, String newPassword) {
         if (!passwordEncoder.matches(oldPassword, user.getEncodedPassword())) {
             throw new UsernameNotFoundException("Username/password incorrect: " + user.getName());
         }
         user.setEncodedPassword(passwordEncoder.encode(newPassword));
     }
 
-    public boolean userExists(String username) {
-        return userRepository.findOneByName(username).isPresent();
-    }
+    // ***********************************************************************
 
     @EventListener
     public void onLoginSuccess(AuthenticationSuccessEvent successEvent) {
@@ -125,5 +141,11 @@ public class UserService implements UserDetailsService {
     @EventListener
     public void onLoginFailure(AbstractAuthenticationFailureEvent failureEvent) {
         log.info("Authentication failure: {}", failureEvent.toString());
+        String username = failureEvent.getAuthentication().getName();
+        findByName(username).ifPresent(user -> {
+            user.setLastLoginFailureAt(Instant.now());
+            user.setLoginFailures(user.getLoginFailures() + 1);
+            userRepository.save(user);
+        });
     }
 }

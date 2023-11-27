@@ -1,6 +1,6 @@
 package de.ostfalia.fbi.j4iot.security;
 
-import de.ostfalia.fbi.j4iot.data.service.IotService;
+import de.ostfalia.fbi.j4iot.data.service.DeviceService;
 import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -22,7 +22,7 @@ public class RestSecurityConfig {
     public static final String DEVICE_API_AUTHORITY = "DEVICE_API";
 
     @Autowired
-    private IotService iotService;
+    private DeviceService iotService;
 
     @Bean
     @Order(1)
@@ -37,6 +37,8 @@ public class RestSecurityConfig {
                 .authorizeHttpRequests((authorize) -> authorize
                         .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
                         .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.POST, "/api/provision"))
+                            .permitAll()
+                        .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/hello"))
                             .permitAll()
                         .anyRequest().authenticated() //.hasAuthority(DEVICE_API_AUTHORITY)
                 );
