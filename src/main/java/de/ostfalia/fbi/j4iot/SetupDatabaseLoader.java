@@ -77,6 +77,7 @@ public class SetupDatabaseLoader {
             log.info("project=thingpulse provisioningToken2={}", provisioningToken2.getToken());
 
             DeviceToken deviceToken1 = deviceService.addNewDeviceToken(device1);
+            deviceToken1.setToken("secret-device-token");
             deviceToken1 = deviceTokenRepository.save(deviceToken1);
             log.info("device={} deviceToken1={}", device1.getName(), deviceToken1.getToken());
             DeviceToken deviceToken2 = deviceService.addNewDeviceToken(device2);

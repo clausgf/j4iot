@@ -8,12 +8,15 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+import org.springframework.util.DigestUtils;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Base64;
 
 @Service
 public class FileService {
@@ -21,7 +24,8 @@ public class FileService {
     // ***********************************************************************
 
     private final Logger log = LoggerFactory.getLogger(FileService.class);
-    private Path basePath;
+    private static final Base64.Encoder base64Encoder = Base64.getUrlEncoder();
+    private final Path basePath;
 
     // ***********************************************************************
 
@@ -38,19 +42,42 @@ public class FileService {
         }
     }
 
-    public Resource loadFileAsResource(Device d, String fileName) {
+    public Resource loadFileAsResource(Device d, String fileName) throws FileNotFoundException {
         Assert.notNull(d, "Must specify a valid device");
         Assert.notNull(fileName, "Must specify a valid filename");
 
         // determine path
-        Path p = Paths.get(basePath.toString(), d.getProject().getName(), d.getName(), fileName).normalize();
+        Path projectBase = Paths.get(basePath.toString(), d.getProject().getName());
+        Path p = Paths.get(projectBase.toString(), d.getName(), fileName).toAbsolutePath().normalize();
         if (!Files.exists(p)) {
-            p = Paths.get(basePath.toString(), d.getProject().getName(), fileName).normalize();
+            p = Paths.get(projectBase.toString(), fileName).toAbsolutePath().normalize();
         }
 
-        // leave fileNotFound exception handling to the caller
-        Resource resource = new FileSystemResource(p);
-        return resource;
+        // check that we did not break out of the project file system
+        if (!p.startsWith(projectBase) || !Files.exists(p)) {
+            throw new FileNotFoundException();
+        }
+
+        return new FileSystemResource(p);
+    }
+
+    public String calcEtag(Resource r) {
+        Assert.notNull(r, "Must specify a resource");
+
+        String etag = null;
+        long len = 0;
+        long lastModified = 0;
+        try {
+            len = r.contentLength();
+            lastModified = r.lastModified();
+        } catch (IOException e) {
+            return null;
+        }
+        String fingerprint = Long.toString(len) + "-" + Long.toString(lastModified);
+        log.info("etag: fingerprint={}", fingerprint);
+        etag = base64Encoder.encodeToString( DigestUtils.md5Digest(fingerprint.getBytes()) );
+
+        return etag;
     }
 
     // ***********************************************************************
