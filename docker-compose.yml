@@ -49,6 +49,8 @@ services:
     networks:
       - backend
       - global-proxy
+    volumes:
+      - ./iot-data:/iot-data
     depends_on:
       #- postgres
       postgres:

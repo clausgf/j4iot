@@ -46,6 +46,7 @@ public class TimeseriesService {
     // ************************************************************************
 
     public TimeseriesService(InfluxdbConfiguration config) {
+        log.info("Using influxdb org={} url={}", config.getOrg(), config.getUrl());
         this.orgName = config.getOrg();
         clientApi = InfluxDBClientFactory.create(config.getUrl(), config.getToken().toCharArray(), orgName);
         bucketsApi = clientApi.getBucketsApi();
