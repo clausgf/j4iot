@@ -1,7 +1,6 @@
 package de.ostfalia.fbi.j4iot.restcontroller;
 
 import de.ostfalia.fbi.j4iot.data.service.DeviceService;
-import de.ostfalia.fbi.j4iot.data.service.ProjectService;
 import de.ostfalia.fbi.j4iot.data.service.ServiceUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -14,28 +13,22 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("${j4iot.api.path:/api}")
 public class RestProvisioningApi {
 
     private final Logger log = LoggerFactory.getLogger(RestProvisioningApi.class);
-    private final ProjectService projectService;
     private final DeviceService deviceService;
 
     // ***********************************************************************
 
-    RestProvisioningApi(ProjectService projectService, DeviceService deviceService) {
-        this.projectService = projectService;
+    RestProvisioningApi(DeviceService deviceService) {
         this.deviceService = deviceService;
-    }
-
-    // ***********************************************************************
-
-    @GetMapping(value = "/hello")
-    public String hello() {
-        return "Hello world!";
     }
 
     // ***********************************************************************

@@ -52,7 +52,7 @@ public class DeviceSettings extends GenericForm<Device> implements HasDynamicTit
     DateTimePicker lastProvisionedAt = new DateTimePicker("Last provisioned at");
     DateTimePicker lastSeenAt = new DateTimePicker("Last seen at");
 
-    Grid<DeviceToken> deviceTokens = new Grid<>(DeviceToken.class);
+    Grid<DeviceToken> deviceTokenGrid = new Grid<>(DeviceToken.class);
     Button addDeviceTokenButton = new Button("Add device token");
 
 
@@ -83,42 +83,42 @@ public class DeviceSettings extends GenericForm<Device> implements HasDynamicTit
         //addHeader("Device");
         FormLayout main = addForm();
         Arrays.asList(createdAt, updatedAt, lastProvisioningRequestAt, lastProvisionedAt, lastSeenAt).forEach(e -> e.setReadOnly(true));
-        main.setColspan(deviceTokens, 2);
+        main.setColspan(deviceTokenGrid, 2);
         main.setColspan(addDeviceTokenButton, 2);
         Arrays.asList(name, description, tags, location).forEach(e -> main.setColspan(e, 2));
         addSectionTo(main, "General settings", name, description, tags, createdAt, updatedAt);
         addSectionTo(main, "Specific settings", location, lastSeenAt, provisioningApproved, lastProvisioningRequestAt, lastProvisionedAt);
 
-        deviceTokens.setColumns();
-        deviceTokens.addColumn("token")
+        deviceTokenGrid.setColumns();
+        deviceTokenGrid.addColumn("token")
                 .setTooltipGenerator(DeviceToken::getToken)
                 .setHeader("Token");
-        deviceTokens.addColumn(new InstantRenderer<>(DeviceToken::getExpiresAt))
+        deviceTokenGrid.addColumn(new InstantRenderer<>(DeviceToken::getExpiresAt))
                 .setTooltipGenerator(item -> item.getExpiresAt().toString())
                 .setHeader("Expires");
-        deviceTokens.addComponentColumn(item ->
+        deviceTokenGrid.addComponentColumn(item ->
                 new Button(new Icon(VaadinIcon.CLIPBOARD), click -> {
                     ClientsideClipboard.writeToClipboard(item.getToken());
                 }))
                 .setTooltipGenerator(item -> "Copy token to clipboard")
                 .setAutoWidth(true).setFlexGrow(0);
-        deviceTokens.addComponentColumn(item ->
+        deviceTokenGrid.addComponentColumn(item ->
                 new Button(new Icon(VaadinIcon.TRASH),click -> {
                     item.getDevice().getDeviceTokens().remove(item);
-                    deviceTokens.setItems(item.getDevice().getDeviceTokens());
+                    deviceTokenGrid.setItems(item.getDevice().getDeviceTokens());
                 }))
                 .setTooltipGenerator(item -> "Delete token")
                 .setAutoWidth(true).setFlexGrow(0);
-        deviceTokens.setAllRowsVisible(true);
-        deviceTokens.addThemeVariants(GridVariant.LUMO_COMPACT);
+        deviceTokenGrid.setAllRowsVisible(true);
+        deviceTokenGrid.addThemeVariants(GridVariant.LUMO_COMPACT);
         addDeviceTokenButton.addClickListener(event -> {
             if (binder.getBean() != null) {
                 Device device = binder.getBean();
                 deviceService.addNewDeviceToken(device);
-                deviceTokens.setItems(device.getDeviceTokens());
+                deviceTokenGrid.setItems(device.getDeviceTokens());
             }
         });
-        addSectionTo(main, "Device Tokens", deviceTokens, addDeviceTokenButton);
+        addSectionTo(main, "Device Tokens", deviceTokenGrid, addDeviceTokenButton);
 
         addFooter();
     }
@@ -156,7 +156,7 @@ public class DeviceSettings extends GenericForm<Device> implements HasDynamicTit
             }
             super.saveCreate();
         } catch (Exception e) {
-            String msg = "Exception creating item instance class=" + modelClass.getName() + ": " + e.getMessage();
+            String msg = "Exception creating/saving item instance class=" + modelClass.getName() + ": " + e.getMessage();
             log.error(msg);
             Notification.show(msg).addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
@@ -167,9 +167,9 @@ public class DeviceSettings extends GenericForm<Device> implements HasDynamicTit
         super.populateForm(item);
         name.setReadOnly( item != null );
         if (item == null) {
-            deviceTokens.setItems(new LinkedList<>());
+            deviceTokenGrid.setItems(new LinkedList<>());
         } else {
-            deviceTokens.setItems(item.getDeviceTokens());
+            deviceTokenGrid.setItems(item.getDeviceTokens());
         }
         withMainLayout(m -> m.setCurrentDevice(item));
     }
@@ -181,7 +181,7 @@ public class DeviceSettings extends GenericForm<Device> implements HasDynamicTit
 
     @Override
     protected Device save() {
-        return deviceService.updateDevice(item);
+        return deviceService.updateOrCreate(item);
     }
 
 }

@@ -30,7 +30,7 @@ public class FileService {
     // ***********************************************************************
 
     public FileService(
-            @Value("${j4iot.files.base-path}") String basePath
+            @Value("${j4iot.files.base-path:iot-data}") String basePath
     ) {
         this.basePath = Paths.get(basePath).toAbsolutePath().normalize();
         String currentDir = new File("").getAbsolutePath();
@@ -74,14 +74,10 @@ public class FileService {
             return null;
         }
         String fingerprint = Long.toString(len) + "-" + Long.toString(lastModified);
-        log.info("etag: fingerprint={}", fingerprint);
         etag = base64Encoder.encodeToString( DigestUtils.md5Digest(fingerprint.getBytes()) );
 
         return etag;
     }
-
-    // ***********************************************************************
-
 
     // ***********************************************************************
 

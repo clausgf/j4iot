@@ -10,10 +10,13 @@
 
 package de.ostfalia.fbi.j4iot.data.service;
 
+import de.ostfalia.fbi.j4iot.data.entity.Forwarding;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
 import de.ostfalia.fbi.j4iot.data.entity.ProvisioningToken;
 import de.ostfalia.fbi.j4iot.data.repository.DeviceRepository;
+import de.ostfalia.fbi.j4iot.data.repository.ForwardingRepository;
 import de.ostfalia.fbi.j4iot.data.repository.ProjectRepository;
+import de.ostfalia.fbi.j4iot.data.repository.ProvisioningTokenRepository;
 import de.ostfalia.fbi.j4iot.security.SecurityService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +38,8 @@ public class ProjectService {
 
     private final SecurityService securityService;
     private final ProjectRepository projectRepository;
+    private final ProvisioningTokenRepository provisioningTokenRepository;
+    private final ForwardingRepository forwardingRepository;
     private final DeviceRepository deviceRepository;
 
     private static final SecureRandom secureRandom = new SecureRandom();
@@ -42,33 +47,21 @@ public class ProjectService {
 
     // ************************************************************************
 
-    public ProjectService(SecurityService securityService, ProjectRepository projectRepository, DeviceRepository deviceRepository) {
+    public ProjectService(
+            SecurityService securityService,
+            ProjectRepository projectRepository,
+            ProvisioningTokenRepository provisioningTokenRepository,
+            ForwardingRepository forwardingRepository,
+            DeviceRepository deviceRepository)
+    {
         this.securityService = securityService;
         this.projectRepository = projectRepository;
+        this.provisioningTokenRepository = provisioningTokenRepository;
+        this.forwardingRepository = forwardingRepository;
         this.deviceRepository = deviceRepository;
     }
 
     // ************************************************************************
-
-    // TODO generally check auth in all finder methods!
-/*
-    public List<Project> findAll() {
-        return projectRepository.findAll();
-    }
-
-    public Optional<Project> findById(Long id) {
-        return projectRepository.findById(id);
-    }
-
-    public List<Project> findAllByAuth() {
-        Long userId = securityService.getAuthenticatedUserId();
-        if (userId != null) {
-            return projectRepository.findAllByUserId(userId);
-        } else { // user id not present: return empty list
-            return new LinkedList<>();
-        }
-    }
-*/
 
     public List<Project> findAllByAuth() {
         Long userId = securityService.getAuthenticatedUserId();
@@ -104,27 +97,7 @@ public class ProjectService {
 
     public Project updateOrCreate(Project project) {
         Assert.notNull(project, "updateOrCreate: Project is null. Are you sure you have connected your form to the application?");
-        /*
-        List<ProvisioningToken> tokensInDb = findAllProvisioningTokensByProject(project);
-        for (ProvisioningToken newToken: project.getProvisioningTokens()) {
-            int i = tokensInDb.indexOf(newToken);
-            if (i>=0) {
-                // found the token id in the database: update if necessary
-                ProvisioningToken oldToken = tokensInDb.get(i);
-                Boolean isTokenSame = newToken.getToken().equals(oldToken.getToken())
-                        && newToken.getExpiresAt().equals(oldToken.getExpiresAt());
-                if (!isTokenSame) {
-                    provisioningTokenRepository.save(newToken);
-                }
-                tokensInDb.remove(i);
-            } else {
-                // did not find the token id in the database: save it to the db
-                provisioningTokenRepository.save(newToken);
-            }
-        }
-        // delete tokens not in in the project from db
-        provisioningTokenRepository.deleteAll(tokensInDb);
-        */
+        // since orphanRemoval is true, deletion of provisioning tokens and forwadings is handled automatically
         return projectRepository.save(project);
     }
 
@@ -132,8 +105,8 @@ public class ProjectService {
     public void delete(Project project) {
         Long projectId = project.getId();
         project = projectRepository.findById(projectId).orElseThrow( () -> new RuntimeException("Project to delete not found id=" + projectId) );
-        // provisioning tokens are cascaded, no delete needed
-        deviceRepository.deleteAll(project.getDevices());
+        // provisioning tokens, forwardings and devices are cascaded, no delete needed
+        //deviceRepository.deleteAll(project.getDevices());
         projectRepository.delete(project);
     }
 
@@ -143,6 +116,8 @@ public class ProjectService {
         return deviceRepository.countByProjectId(project.getId());
     }
 
+    // ************************************************************************
+    // Provisioning Tokens
     // ************************************************************************
 
     /**
@@ -156,6 +131,18 @@ public class ProjectService {
         ProvisioningToken provisioningToken = new ProvisioningToken( project, token64, expiresAt );
         project.getProvisioningTokens().add( provisioningToken );
         return provisioningToken;
+    }
+
+    // ************************************************************************
+
+    public Optional<Forwarding> findForwardingByProjectNameAndForwardName(String projectName, String forwardName) {
+        Optional<Forwarding> forwarding = forwardingRepository.findByProjectNameAndForwardName(projectName, forwardName);
+        if (forwarding.isPresent()) {
+            forwarding.get().setLastUseAt( Instant.now() );
+            forwarding = Optional.of( forwardingRepository.save(forwarding.get()) );
+        }
+        return forwarding;
+
     }
 
     // ************************************************************************

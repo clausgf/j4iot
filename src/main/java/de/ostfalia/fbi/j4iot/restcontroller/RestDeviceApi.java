@@ -2,15 +2,16 @@ package de.ostfalia.fbi.j4iot.restcontroller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
+import de.ostfalia.fbi.j4iot.data.entity.Forwarding;
 import de.ostfalia.fbi.j4iot.data.service.DeviceService;
+import de.ostfalia.fbi.j4iot.data.service.ProjectService;
 import de.ostfalia.fbi.j4iot.data.service.ServiceUtils;
 import de.ostfalia.fbi.j4iot.data.service.TimeseriesService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
@@ -20,14 +21,23 @@ public class RestDeviceApi {
     // ***********************************************************************
 
     private final Logger log = LoggerFactory.getLogger(RestDeviceApi.class);
+    private final ProjectService projectService;
     private final DeviceService deviceService;
     private final TimeseriesService timeseriesService;
+    private final RestTemplate restTemplate;
 
     // ***********************************************************************
 
-    RestDeviceApi(DeviceService deviceService, TimeseriesService timeseriesService) {
+    RestDeviceApi(
+            ProjectService projectService,
+            DeviceService deviceService,
+            TimeseriesService timeseriesService,
+            RestTemplate restTemplate)
+    {
+        this.projectService = projectService;
         this.deviceService = deviceService;
         this.timeseriesService = timeseriesService;
+        this.restTemplate = restTemplate;
     }
 
     // ***********************************************************************
@@ -40,8 +50,7 @@ public class RestDeviceApi {
             @PathVariable String kind,
             @RequestBody String data) {
 
-        ServiceUtils.checkName( projectName );
-        ServiceUtils.checkName( deviceName );
+        ServiceUtils.checkAuthentication( projectName, deviceName );
         ServiceUtils.checkName( kind );
 
         // determine the device
@@ -67,8 +76,7 @@ public class RestDeviceApi {
             @PathVariable String deviceName,
             @RequestBody String[] data) {
 
-        ServiceUtils.checkName(projectName);
-        ServiceUtils.checkName(deviceName);
+        ServiceUtils.checkAuthentication( projectName, deviceName );
 
         // determine the device
         Device device = deviceService.findByProjectNameAndName(projectName, deviceName)
@@ -82,12 +90,44 @@ public class RestDeviceApi {
 
     // ***********************************************************************
 
-    @GetMapping(value = "/forward/{projectName}/{forwardConfig}")
-    public ResponseEntity<?> apiForwarderWithDeviceAuth(
-            @PathVariable String forwardConfig,
-            @RequestBody String[] data) {
+    @GetMapping(value = "/forward/{projectName}/{forwardingName}/{remainingUrl}")
+    public ResponseEntity<?> getForward(
+            @PathVariable String projectName,
+            @PathVariable String forwardingName,
+            @PathVariable String remainingUrl,
+            HttpRequest request)
+    {
+        ServiceUtils.checkAuthentication( projectName );
+        ServiceUtils.checkName(forwardingName);
 
-        return ResponseEntity.status(HttpStatus.OK).body("");
+        Forwarding f = projectService.findForwardingByProjectNameAndForwardName(projectName, forwardingName)
+                .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Forwarding not found: projectName=" + projectName + " forwarding=" + forwardingName));
+        if (!f.getEnableMethodGet()) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Method not enabled: projectName=" + projectName + " forwarding=" + forwardingName + " method=get");
+        }
+
+        String targetUrl = f.getForwardToUrl();
+        if (f.getExtendUrl()) {
+            targetUrl = targetUrl + remainingUrl;
+        }
+        log.info("Forwarding project={} forward={} url={}", projectName, forwardingName, targetUrl);
+
+        HttpEntity<Object> requestEntity = new HttpEntity<>(request.getHeaders());
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                targetUrl,
+                HttpMethod.GET,
+                requestEntity,
+                String.class
+        );
+
+        return ResponseEntity
+                .status(responseEntity.getStatusCode())
+                .headers(requestEntity.getHeaders())
+                .body(responseEntity.getBody());
     }
 
     // ***********************************************************************

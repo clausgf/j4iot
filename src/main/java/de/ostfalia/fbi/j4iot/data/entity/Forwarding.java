@@ -4,14 +4,21 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 
 @Entity
-@Table( indexes = { @Index(columnList = "token", unique = true) })
-public class ProvisioningToken extends AbstractEntity {
+@Table(
+        indexes = {
+                @Index(columnList = "name"),
+        },
+        uniqueConstraints = {
+                @UniqueConstraint(name = "RedirectionUniqueNameAndProject", columnNames = { "name", "project_id" })
+        })
+public class Forwarding extends AbstractEntity {
 
     // ***********************************************************************
 
@@ -24,27 +31,30 @@ public class ProvisioningToken extends AbstractEntity {
     @UpdateTimestamp
     private Instant updatedAt;
 
-    // tokens are unique to enable finding the device by token
-    // this could be realized by encoding the device id into the token
-    @NotNull @NotEmpty @Column(length = 160, unique = true)
-    private String token;
+    @Column(length = 80, unique = true)
+    @NotNull @NotEmpty
+    private String name = "";
 
-    @NotNull private Instant expiresAt;
+    @NotNull @NotEmpty
+    @Pattern(regexp = "^(http|https).*", message = "Please enter a valid http or https URL.")
+    private String forwardToUrl = "https://";
+
+    @NotNull private Boolean extendUrl = true;
+    @NotNull private Boolean enableMethodGet = true;
     private Instant lastUseAt = null;
+
 
     // ***********************************************************************
 
-    public ProvisioningToken() {
+    public Forwarding() {
         this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
+        this.updatedAt = createdAt;
     }
 
-    public ProvisioningToken(Project project, String token, Instant expiresAt) {
-        this.project = project;
-        this.token = token;
-        this.expiresAt = expiresAt;
+    public Forwarding(Project project) {
         this.createdAt = Instant.now();
-        this.updatedAt = this.createdAt;
+        this.updatedAt = createdAt;
+        this.project = project;
     }
 
     // ***********************************************************************
@@ -54,13 +64,6 @@ public class ProvisioningToken extends AbstractEntity {
     }
     public void setProject(Project project) {
         this.project = project;
-    }
-
-    public String getToken() {
-        return token;
-    }
-    public void setToken(String token) {
-        this.token = token;
     }
 
     public Instant getCreatedAt() {
@@ -77,11 +80,32 @@ public class ProvisioningToken extends AbstractEntity {
         this.updatedAt = updatedAt;
     }
 
-    public Instant getExpiresAt() {
-        return expiresAt;
+    public String getName() {
+        return name;
     }
-    public void setExpiresAt(Instant expiresAt) {
-        this.expiresAt = expiresAt;
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getForwardToUrl() {
+        return forwardToUrl;
+    }
+    public void setForwardToUrl(String redirectUrl) {
+        this.forwardToUrl = redirectUrl;
+    }
+
+    public Boolean getExtendUrl() {
+        return extendUrl;
+    }
+    public void setExtendUrl(Boolean extendUrl) {
+        this.extendUrl = extendUrl;
+    }
+
+    public Boolean getEnableMethodGet() {
+        return enableMethodGet;
+    }
+    public void setEnableMethodGet(Boolean enableMethodGet) {
+        this.enableMethodGet = enableMethodGet;
     }
 
     public Instant getLastUseAt() {

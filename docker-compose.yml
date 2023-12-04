@@ -66,6 +66,7 @@ services:
       - J4IOT_INFLUXDB_ORG=${INFLUXDB_ORG}
       - J4IOT_DEFAULT_USERNAME=${DEFAULT_USERNAME}
       - J4IOT_DEFAULT_PASSWORD=${DEFAULT_PASSWORD}
+      - J4IOT_DEFAULT_CREATEEXAMPLEDATA=false
     labels:
       - "traefik.enable=true" # enables the service
       - "traefik.network=global-proxy" # use the global-proxy network

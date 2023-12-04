@@ -48,10 +48,13 @@ public class Project extends AbstractEntity {
     @NotNull private Boolean autocreateDevices = true;
     @NotNull private Boolean provisioningAutoapproval = true;
 
-    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.EAGER) @OrderBy("createdAt desc")
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER) @OrderBy("createdAt desc")
     private List<ProvisioningToken> provisioningTokens = new LinkedList<>();
 
-    @OneToMany(mappedBy = "project") @OrderBy("name")
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER) @OrderBy("name")
+    private List<Forwarding> forwardings = new LinkedList<>();
+
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL) @OrderBy("name")
     private List<Device> devices = new LinkedList<>();
 
     // ***********************************************************************
@@ -162,6 +165,13 @@ public class Project extends AbstractEntity {
     }
     public void setProvisioningTokens(List<ProvisioningToken> provisioningTokens) {
         this.provisioningTokens = provisioningTokens;
+    }
+
+    public List<Forwarding> getForwardings() {
+        return forwardings;
+    }
+    public void setForwardings(List<Forwarding> forwardings) {
+        this.forwardings = forwardings;
     }
 
     public List<Device> getDevices() {

@@ -64,7 +64,7 @@ public abstract class GenericForm<T extends AbstractEntity> extends Div implemen
     protected void addSectionTo(FormLayout form, String title, Component... components) {
         if (title != null && !title.isEmpty()) {
             H4 sectionTitle = new H4(title);
-            form.addClassName("generic-form-section-title");
+            sectionTitle.addClassName("generic-form-section-title");
             form.add(sectionTitle);
             form.setColspan(sectionTitle, 2);
         }
@@ -137,7 +137,7 @@ public abstract class GenericForm<T extends AbstractEntity> extends Div implemen
                 try {
                     item = save();
                     if (item != null) {
-                        Notification.show("Item saved");
+                        Notification.show("Item saved").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                         populateForm(item);
                     } else {
                         Notification.show("Failure saving item").addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -151,7 +151,7 @@ public abstract class GenericForm<T extends AbstractEntity> extends Div implemen
                 Notification.show("Failure saving item: Validation failed").addThemeVariants(NotificationVariant.LUMO_ERROR);
             }
         } catch (Exception e) {
-            String msg = "Exception creating item instance class=" + modelClass.getName() + ": " + e.getMessage();
+            String msg = "Exception creating/saving item instance class=" + modelClass.getName() + ": " + e.getMessage();
             log.error(msg);
             Notification.show(msg).addThemeVariants(NotificationVariant.LUMO_ERROR);
         }

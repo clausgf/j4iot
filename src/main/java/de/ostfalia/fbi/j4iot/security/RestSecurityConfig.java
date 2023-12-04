@@ -38,8 +38,8 @@ public class RestSecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
                         .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.POST, "/api/provision"))
                             .permitAll()
-                        .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/hello"))
-                            .permitAll()
+                        //.requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/hello"))
+                        //    .permitAll()
                         .anyRequest().authenticated() //.hasAuthority(DEVICE_API_AUTHORITY)
                 );
         return http.build();

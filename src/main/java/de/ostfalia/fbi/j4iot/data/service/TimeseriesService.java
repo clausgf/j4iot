@@ -59,6 +59,7 @@ public class TimeseriesService {
     private Organization getOrganization(String organizationName) {
         OrganizationsApi orgApi = clientApi.getOrganizationsApi();
         List<Organization> orgs = orgApi.findOrganizations();
+        log.info("influxdb organizations: looking for orgName={} available: {}", organizationName, orgs);
         return orgs.stream()
                 .filter(org -> org.getName().equals(organizationName))
                 .findFirst()

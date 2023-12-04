@@ -31,15 +31,15 @@ import com.vaadin.flow.router.Route;
 import de.ostfalia.fbi.j4iot.data.entity.User;
 import de.ostfalia.fbi.j4iot.data.service.UserService;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
-import jakarta.annotation.security.PermitAll;
+import jakarta.annotation.security.RolesAllowed;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.util.Optional;
 
-@PermitAll
-@Route(value="/users/:userId?/:action?(edit)", layout = MainLayout.class)
 @PageTitle("Users")
+@Route(value="/users/:userId?/:action?(edit)", layout = MainLayout.class)
+@RolesAllowed("ADMIN")
 @Uses(Icon.class)
 public class UserMasterDetail extends Div implements BeforeEnterObserver {
 
@@ -88,8 +88,6 @@ public class UserMasterDetail extends Div implements BeforeEnterObserver {
         grid.addColumn("name").setAutoWidth(true);
         grid.addColumn("firstName").setAutoWidth(true);
         grid.addColumn("lastName").setAutoWidth(true);
-        grid.addColumn("enabled").setAutoWidth(true);
-        grid.addColumn("expiresAt").setAutoWidth(true);
         grid.addColumn("lastLoginAt").setAutoWidth(true);
         //grid.addColumn("role").setAutoWidth(true);
 

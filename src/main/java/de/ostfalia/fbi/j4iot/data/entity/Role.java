@@ -27,6 +27,13 @@ public class Role extends AbstractEntity {
 
     // ***********************************************************************
 
+    public enum Roles {
+        ADMIN,
+        PROJECT
+    }
+
+    // ***********************************************************************
+
     public Role() {}
     public Role(String name) { this.name = name; }
 
@@ -50,8 +57,6 @@ public class Role extends AbstractEntity {
     public void setUsers(Set<User> users) {
         this.users = users;
     }
-    public void addUser(User user) { user.addRole(this); }
-    public void removeUser(User user) { user.removeRole(this); }
 
     // ***********************************************************************
 

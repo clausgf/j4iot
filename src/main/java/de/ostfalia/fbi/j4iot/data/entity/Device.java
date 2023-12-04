@@ -21,7 +21,7 @@ import java.util.List;
                 @Index(columnList = "lastSeenAt")
         },
         uniqueConstraints = {
-                @UniqueConstraint(name = "UniqueNameAndProject", columnNames = { "name", "project_id" })
+                @UniqueConstraint(name = "DeviceUniqueNameAndProject", columnNames = { "name", "project_id" })
         })
 public class Device extends AbstractEntity {
 
@@ -33,7 +33,7 @@ public class Device extends AbstractEntity {
     private Instant updatedAt;
 
     @ManyToOne
-    @JsonIgnoreProperties({"provisioningTokens", "devices"})
+    @JsonIgnoreProperties({"provisioningTokens", "devices", "forwardings"})
     @NotNull
     Project project;
 
@@ -52,7 +52,7 @@ public class Device extends AbstractEntity {
     private Instant lastProvisionedAt = null;
     private Instant lastSeenAt = null;
 
-    @OneToMany(mappedBy = "device", cascade = CascadeType.ALL, fetch = FetchType.EAGER) @OrderBy("createdAt desc")
+    @OneToMany(mappedBy = "device", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER) @OrderBy("createdAt desc")
     private List<DeviceToken> deviceTokens = new LinkedList<>();
 
     // ***********************************************************************

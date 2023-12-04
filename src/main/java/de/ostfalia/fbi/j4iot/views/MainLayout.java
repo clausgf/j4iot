@@ -26,6 +26,7 @@ import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.server.auth.AccessAnnotationChecker;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
@@ -54,6 +55,7 @@ public class MainLayout extends AppLayout {
     // ************************************************************************
 
     private static final Logger log = LoggerFactory.getLogger(MainLayout.class);
+    private final AccessAnnotationChecker accessChecker;
     private final SecurityService securityService;
     private final ProjectService projectService;
     private final DeviceService deviceService;
@@ -62,10 +64,6 @@ public class MainLayout extends AppLayout {
     private Project currentProject;
     private Device currentDevice;
     private boolean isValueChangeEnabled = true;
-
-    // TODO find a better way to determine the url from the configuration
-    // TODO secure all springdoc endpoints!
-    private String springDocSwaggerUrl = "/../api-doc/swagger-ui/index.html";
 
     private H2 viewTitle;
     private final Dialog passwordChangeDialog = createPasswordChangeDialog();
@@ -79,7 +77,8 @@ public class MainLayout extends AppLayout {
 
     // ************************************************************************
 
-    public MainLayout(SecurityService securityService, ProjectService projectService, DeviceService deviceService, UserService userService) {
+    public MainLayout(AccessAnnotationChecker accessChecker, SecurityService securityService, ProjectService projectService, DeviceService deviceService, UserService userService) {
+        this.accessChecker = accessChecker;
         this.securityService = securityService;
         this.projectService = projectService;
         this.deviceService = deviceService;
@@ -136,8 +135,8 @@ public class MainLayout extends AppLayout {
         overviewNav.setLabel("Overview");
         overviewNav.addItem(new SideNavItem("My Projects", ProjectList.class, VaadinIcon.CONNECT_O.create()));
         overviewNav.addItem(new SideNavItem("My Devices", DeviceList.class, VaadinIcon.ROCKET.create()));
-        overviewNav.addItem(new SideNavItem("Visualization", DefaultView.class, VaadinIcon.SPLINE_CHART.create()));
-        overviewNav.addItem(new SideNavItem("API doc", springDocSwaggerUrl, VaadinIcon.BOOK.create())); // https://www.baeldung.com/spring-rest-openapi-documentation
+        overviewNav.addItem(new SideNavItem("Visualization", VisualizationView.class, VaadinIcon.SPLINE_CHART.create()));
+        overviewNav.addItem(new SideNavItem("API doc", ApiDocView.class, VaadinIcon.BOOK.create()));
         overviewNav.addItem(new SideNavItem("About", AboutView.class, VaadinIcon.INFO_CIRCLE.create()));
 
         SideNav projectNav = new SideNav();
@@ -153,8 +152,10 @@ public class MainLayout extends AppLayout {
 
         SideNav adminNav = new SideNav();
         adminNav.setLabel("Admin");
-        //adminNav.setCollapsible(true);
-        adminNav.addItem(new SideNavItem("Users", UserMasterDetail.class, VaadinIcon.USERS.create()));
+        adminNav.setCollapsible(true);
+        if (accessChecker.hasAccess(UserMasterDetail.class)) {
+            adminNav.addItem(new SideNavItem("Users", UserMasterDetail.class, VaadinIcon.USERS.create()));
+        }
 
         Footer footer = new Footer();
         footer.setClassName("drawer-footer");

@@ -9,11 +9,13 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteParam;
 import com.vaadin.flow.router.RouteParameters;
+import de.ostfalia.fbi.j4iot.data.entity.Forwarding;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
 import de.ostfalia.fbi.j4iot.data.entity.ProvisioningToken;
 import de.ostfalia.fbi.j4iot.data.service.ProjectService;
@@ -45,8 +47,13 @@ public class ProjectSettings extends GenericForm<Project> implements HasDynamicT
     private final Checkbox autocreateDevices = new Checkbox("Autocreate devices");
     private final Checkbox provisioningAutoapproval = new Checkbox("Provisioning autoapproval");
 
-    private final Grid<ProvisioningToken> provisioningTokens = new Grid<>(ProvisioningToken.class);
+    private final Grid<ProvisioningToken> provisioningTokenGrid = new Grid<>(ProvisioningToken.class);
     private final Button addProvisioningTokenButton = new Button("Add provisioning token");
+    private final ProvisioningTokenDialog provisioningTokenDialog;
+
+    private final Grid<Forwarding> forwardingGrid = new Grid<>(Forwarding.class);
+    private final Button addForwardingButton = new Button("Add http forwarding");
+    private final ForwardingDialog forwardingDialog;
 
     // ***********************************************************************
 
@@ -70,44 +77,96 @@ public class ProjectSettings extends GenericForm<Project> implements HasDynamicT
         this.service = service;
         binder.bindInstanceFields(this);
 
+        provisioningTokenDialog = new ProvisioningTokenDialog(ProvisioningToken.class, (isCreateMode, savedItem) -> {
+            Project project = binder.getBean();
+            if (project != null) {
+                if (isCreateMode) {
+                    savedItem.setProject(project);
+                    project.getProvisioningTokens().add(savedItem);
+                }
+                provisioningTokenGrid.setItems(project.getProvisioningTokens());
+                return savedItem;
+            }
+            return null;
+        });
+
+        forwardingDialog = new ForwardingDialog(Forwarding.class, (isCreateMode, savedItem) -> {
+            Project project = binder.getBean();
+            if (project != null) {
+                if (isCreateMode) {
+                    savedItem.setProject(project);
+                    project.getForwardings().add(savedItem);
+                }
+                forwardingGrid.setItems(project.getForwardings());
+                return savedItem;
+            }
+            return null;
+        });
+
         FormLayout main = addForm();
         Arrays.asList(createdAt, updatedAt).forEach(e -> e.setReadOnly(true));
-        main.setColspan(provisioningTokens, 2);
-        main.setColspan(addProvisioningTokenButton, 2);
+        Arrays.asList(provisioningTokenGrid, forwardingGrid).forEach(e -> main.setColspan(e, 2));
+        Arrays.asList(addProvisioningTokenButton, addForwardingButton).forEach(e -> main.setColspan(e, 2));
         Arrays.asList(name, description, tags).forEach(e -> main.setColspan(e, 2));
         addSectionTo(main, "General settings", name, description, tags, createdAt, updatedAt);
         addSectionTo(main, "Specific settings", autocreateDevices, provisioningAutoapproval);
 
-        provisioningTokens.setColumns();
-        provisioningTokens.addColumn("token")
-                .setTooltipGenerator(ProvisioningToken::getToken)
-                .setHeader("Token");
-        provisioningTokens.addColumn(new InstantRenderer<>(ProvisioningToken::getExpiresAt))
-                .setTooltipGenerator(item -> item.getExpiresAt().toString())
-                .setHeader("Expires");
-        provisioningTokens.addComponentColumn(item ->
-                        new Button(new Icon(VaadinIcon.CLIPBOARD), click -> {
+        provisioningTokenGrid.setColumns();
+        provisioningTokenGrid.addColumn("token");
+        provisioningTokenGrid.addColumn(new InstantRenderer<>(ProvisioningToken::getExpiresAt))
+                .setHeader("Expires")
+                .setAutoWidth(true).setFlexGrow(0);
+        provisioningTokenGrid.addComponentColumn(item -> { // row copy, edit & delete buttons
+                    Button copyButton = new Button(new Icon(VaadinIcon.CLIPBOARD), click -> {
                             ClientsideClipboard.writeToClipboard(item.getToken());
-                        }))
-                .setTooltipGenerator(item -> "Copy token to clipboard")
-                .setAutoWidth(true).setFlexGrow(0);
-        provisioningTokens.addComponentColumn(item ->
-                        new Button(new Icon(VaadinIcon.TRASH),click -> {
+                        });
+                    copyButton.setTooltipText("Copy token to clipboard");
+                    Button editButton = new Button(new Icon(VaadinIcon.EDIT), click -> provisioningTokenDialog.openForEdit(item) );
+                    editButton.setTooltipText("Edit token");
+                    Button deleteButton = new Button(new Icon(VaadinIcon.TRASH),click -> {
                             item.getProject().getProvisioningTokens().remove(item);
-                            provisioningTokens.setItems(item.getProject().getProvisioningTokens());
-                        }))
-                .setTooltipGenerator(item -> "Delete token")
+                            provisioningTokenGrid.setItems(item.getProject().getProvisioningTokens());
+                        });
+                    deleteButton.setTooltipText("Delete token");
+                    return new HorizontalLayout(copyButton, editButton, deleteButton);
+                })
                 .setAutoWidth(true).setFlexGrow(0);
-        provisioningTokens.setAllRowsVisible(true);
-        provisioningTokens.addThemeVariants(GridVariant.LUMO_COMPACT);
+        provisioningTokenGrid.setAllRowsVisible(true);
+        provisioningTokenGrid.addThemeVariants(GridVariant.LUMO_COMPACT);
         addProvisioningTokenButton.addClickListener(event -> {
-            if (binder.getBean() != null) {
                 Project project = binder.getBean();
-                service.addNewProvisioningToken(project);
-                provisioningTokens.setItems(project.getProvisioningTokens());
-            }
-        });
-        addSectionTo(main, "Provisioning Tokens", provisioningTokens, addProvisioningTokenButton);
+                if (project != null) {
+                    ProvisioningToken pt = service.addNewProvisioningToken(project);
+                    provisioningTokenGrid.setItems(project.getProvisioningTokens());
+                    provisioningTokenDialog.openForEdit(pt); // edit is correct, token already created above!
+                }
+            });
+        addSectionTo(main, "Provisioning Tokens", provisioningTokenGrid, addProvisioningTokenButton);
+
+        forwardingGrid.setColumns();
+        forwardingGrid.addColumn("name").setAutoWidth(true);
+        forwardingGrid.addColumn("forwardToUrl").setAutoWidth(true);
+        forwardingGrid.addComponentColumn(item -> {
+                Button editButton = new Button( new Icon(VaadinIcon.EDIT), click -> forwardingDialog.openForEdit(item) );
+                editButton.setTooltipText("Edit forwarding");
+                Button deleteButton = new Button( new Icon(VaadinIcon.TRASH), click -> {
+                    item.getProject().getForwardings().remove(item);
+                    forwardingGrid.setItems(item.getProject().getForwardings());
+                } );
+                deleteButton.setTooltipText("Delete forwarding");
+                return new HorizontalLayout(editButton, deleteButton);
+            })
+            .setAutoWidth(true).setFlexGrow(0);
+        forwardingGrid.setAllRowsVisible(true);
+        forwardingGrid.addThemeVariants(GridVariant.LUMO_COMPACT);
+        addForwardingButton.addClickListener( event -> {
+                Project project = binder.getBean();
+                if (project != null) {
+                    Forwarding f = new Forwarding(project);
+                    forwardingDialog.openForCreate(f);
+                }
+            } );
+        addSectionTo(main, "Forwarding", forwardingGrid, addForwardingButton);
 
         addFooter();
     }
@@ -128,9 +187,11 @@ public class ProjectSettings extends GenericForm<Project> implements HasDynamicT
         super.populateForm(item);
         name.setReadOnly( item != null );
         if (item == null) {
-            provisioningTokens.setItems(new LinkedList<>());
+            provisioningTokenGrid.setItems(new LinkedList<>());
+            forwardingGrid.setItems(new LinkedList<>());
         } else {
-            provisioningTokens.setItems(item.getProvisioningTokens());
+            provisioningTokenGrid.setItems(item.getProvisioningTokens());
+            forwardingGrid.setItems(item.getForwardings());
         }
         withMainLayout(m -> m.setCurrentProject(item));
     }

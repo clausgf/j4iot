@@ -58,11 +58,13 @@ public class User extends AbstractEntity {
     private Instant lastLoginFailureAt = null;
     private Long loginFailures = 0L;
 
-    @ManyToMany()
-    @JoinTable
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name="user_role", joinColumns = {@JoinColumn(name="user_id")}, inverseJoinColumns = {@JoinColumn(name="role_id")})
     private Set<Role> roles = new HashSet<>();
 
-    @ManyToMany(mappedBy = "users")
+    // not good: @ManyToMany(mappedBy = "users")
+    @ManyToMany()
+    @JoinTable
     private Set<Project> projects = new HashSet<>();
 
     // ***********************************************************************

@@ -122,8 +122,9 @@ public class DeviceService {
         }
     }
 
-    public Device updateDevice(Device device) {
+    public Device updateOrCreate(Device device) {
         Assert.notNull(device, "Device null cannot be updated");
+        // since orphanRemoval is true, deletion of provisioning tokens and forwadings is handled automatically
         return deviceRepository.save(device);
     }
 
@@ -235,7 +236,7 @@ public class DeviceService {
         // device exists and provisioning ok: record provisioning
         device.setLastProvisioningRequestAt( Instant.now() );
         device.setLastProvisionedAt( Instant.now() );
-        device = updateDevice( device );  // write device as we need its id
+        device = updateOrCreate( device );  // write device as we need its id
 
         // create & return device token, transaction will save everything
         DeviceToken deviceToken = addNewDeviceToken( device );
