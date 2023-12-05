@@ -1,4 +1,4 @@
-package de.ostfalia.fbi.j4iot.restcontroller;
+package de.ostfalia.fbi.j4iot.controller;
 
 import de.ostfalia.fbi.j4iot.data.entity.Device;
 import de.ostfalia.fbi.j4iot.data.service.DeviceService;
@@ -21,17 +21,17 @@ import java.io.IOException;
 
 @RestController
 @RequestMapping("${j4iot.api.path:/api}")
-public class RestFileApi {
+public class FileApi {
 
     // ***********************************************************************
 
-    private final Logger log = LoggerFactory.getLogger(RestFileApi.class);
+    private final Logger log = LoggerFactory.getLogger(FileApi.class);
     private final DeviceService deviceService;
     private final FileService fileService;
 
     // ***********************************************************************
 
-    RestFileApi(DeviceService deviceService, FileService fileService) {
+    FileApi(DeviceService deviceService, FileService fileService) {
         this.deviceService = deviceService;
         this.fileService = fileService;
     }

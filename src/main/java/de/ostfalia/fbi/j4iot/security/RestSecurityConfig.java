@@ -1,5 +1,6 @@
 package de.ostfalia.fbi.j4iot.security;
 
+import de.ostfalia.fbi.j4iot.configuration.ApiConfiguration;
 import de.ostfalia.fbi.j4iot.data.service.DeviceService;
 import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,9 @@ public class RestSecurityConfig {
     public static final String DEVICE_API_AUTHORITY = "DEVICE_API";
 
     @Autowired
+    ApiConfiguration apiConfiguration;
+
+    @Autowired
     private DeviceService iotService;
 
     @Bean
@@ -33,7 +37,7 @@ public class RestSecurityConfig {
                 .sessionManagement((session) -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                .addFilterBefore(new DeviceAuthenticationFilter(iotService), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new DeviceAuthenticationFilter(apiConfiguration, iotService), UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests((authorize) -> authorize
                         .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
                         .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.POST, "/api/provision"))

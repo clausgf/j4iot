@@ -1,4 +1,4 @@
-package de.ostfalia.fbi.j4iot.restcontroller;
+package de.ostfalia.fbi.j4iot.controller;
 
 import de.ostfalia.fbi.j4iot.data.service.DeviceService;
 import de.ostfalia.fbi.j4iot.data.service.ServiceUtils;
@@ -20,14 +20,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("${j4iot.api.path:/api}")
-public class RestProvisioningApi {
+public class ProvisioningApi {
 
-    private final Logger log = LoggerFactory.getLogger(RestProvisioningApi.class);
+    private final Logger log = LoggerFactory.getLogger(ProvisioningApi.class);
     private final DeviceService deviceService;
 
     // ***********************************************************************
 
-    RestProvisioningApi(DeviceService deviceService) {
+    ProvisioningApi(DeviceService deviceService) {
         this.deviceService = deviceService;
     }
 

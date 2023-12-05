@@ -1,4 +1,4 @@
-package de.ostfalia.fbi.j4iot;
+package de.ostfalia.fbi.j4iot.configuration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;

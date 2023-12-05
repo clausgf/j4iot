@@ -1,5 +1,6 @@
 package de.ostfalia.fbi.j4iot;
 
+import de.ostfalia.fbi.j4iot.configuration.DefaultConfiguration;
 import de.ostfalia.fbi.j4iot.data.entity.*;
 import de.ostfalia.fbi.j4iot.data.repository.*;
 import de.ostfalia.fbi.j4iot.data.service.DeviceService;

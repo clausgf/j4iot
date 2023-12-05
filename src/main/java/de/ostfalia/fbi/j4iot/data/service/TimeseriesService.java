@@ -8,7 +8,7 @@ import com.influxdb.client.domain.Bucket;
 import com.influxdb.client.domain.Organization;
 import com.influxdb.client.domain.WritePrecision;
 import com.influxdb.client.write.Point;
-import de.ostfalia.fbi.j4iot.InfluxdbConfiguration;
+import de.ostfalia.fbi.j4iot.configuration.InfluxdbConfiguration;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

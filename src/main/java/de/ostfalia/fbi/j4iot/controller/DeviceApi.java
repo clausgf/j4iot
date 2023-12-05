@@ -1,4 +1,4 @@
-package de.ostfalia.fbi.j4iot.restcontroller;
+package de.ostfalia.fbi.j4iot.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
@@ -16,11 +16,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("${j4iot.api.path:/api}")
-public class RestDeviceApi {
+public class DeviceApi {
 
     // ***********************************************************************
 
-    private final Logger log = LoggerFactory.getLogger(RestDeviceApi.class);
+    private final Logger log = LoggerFactory.getLogger(DeviceApi.class);
     private final ProjectService projectService;
     private final DeviceService deviceService;
     private final TimeseriesService timeseriesService;
@@ -28,7 +28,7 @@ public class RestDeviceApi {
 
     // ***********************************************************************
 
-    RestDeviceApi(
+    DeviceApi(
             ProjectService projectService,
             DeviceService deviceService,
             TimeseriesService timeseriesService,
