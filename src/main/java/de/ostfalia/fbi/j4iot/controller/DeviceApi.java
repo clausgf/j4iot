@@ -70,11 +70,11 @@ public class DeviceApi {
 
     // ***********************************************************************
 
-    @PostMapping(value = "/log/{projectName}/{deviceName}")
+    @PostMapping(value = "/log/{projectName}/{deviceName}", consumes = "text/plain")
     public ResponseEntity<?> postLogWithNames(
             @PathVariable String projectName,
             @PathVariable String deviceName,
-            @RequestBody String[] data) {
+            @RequestBody String data) {
 
         ServiceUtils.checkAuthentication( projectName, deviceName );
 

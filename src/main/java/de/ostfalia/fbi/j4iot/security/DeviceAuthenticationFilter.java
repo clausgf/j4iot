@@ -47,7 +47,7 @@ public class DeviceAuthenticationFilter extends GenericFilter {
 
             if (isApiPort && isApiPath) {
                 String token = extractToken((HttpServletRequest) request);
-                log.info("DeviceAuthenticationFilter filtering port={} uri={} token={}", request.getLocalPort(), uri, token);
+                log.debug("DeviceAuthenticationFilter filtering port={} uri={} token={}", request.getLocalPort(), uri, token);
                 if (token != null) {
                     Authentication authentication = authenticate(token);
                     SecurityContextHolder.getContext().setAuthentication(authentication);

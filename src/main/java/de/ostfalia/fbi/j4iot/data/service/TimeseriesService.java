@@ -123,7 +123,7 @@ public class TimeseriesService {
     public void writeTelemetryJson(Device device, String kind, String jsonStr) throws JsonProcessingException {
         Instant time = Instant.now();
         String bucketName = getBucketName(device.getProject().getName());
-        log.info(jsonStr);
+        log.debug(jsonStr);
 
         // add the datapoint
         Point point = new Point(kind); // use kind as a measurement identifier
@@ -144,37 +144,36 @@ public class TimeseriesService {
 
     // ************************************************************************
 
-    private String processEspTags(Point point, String line) {
+    private String addEspTags(Point point, String line) {
         Matcher matcher = espLogPattern.matcher(line);
 
         if (matcher.matches()) {
             String espLevel = matcher.group("level");
             String level = ESP_LOG_LEVELS.get(espLevel);
             point.addTag("level", level);
-            point.addField("timestamp", matcher.group("ts"));
+            //point.addField("ts", matcher.group("ts"));
             point.addTag("tag", matcher.group("tag"));
             return matcher.group("message");
         }
         return line;
     }
 
-    public void writeLog(Device device, String[] lines) {
+    public void writeLog(Device device, String line) {
         Instant time = Instant.now();
         String bucketName = getBucketName(device.getProject().getName());
 
-        for (String line: lines) {
-            Point point = new Point("log");
-            point
-                    .time(time, WritePrecision.MS)
-                    .addTag("device_id", device.getId().toString())
-                    .addTag("device_name", device.getName())
-                    .addTag("project_id", device.getProject().getId().toString())
-                    .addTag("project_name", device.getProject().getName());
+        Point point = new Point("log");
+        point
+                .time(time, WritePrecision.NS)
+                .addTag("device_id", device.getId().toString())
+                .addTag("device_name", device.getName())
+                .addTag("project_id", device.getProject().getId().toString())
+                .addTag("project_name", device.getProject().getName());
 
-            line = processEspTags(point, line);
-            point.addField("message", line);
-            writeApi.writePoint(bucketName, orgName, point);
-        }
+        line = addEspTags(point, line);
+        point.addField("message", line);
+        log.info("Logging t={} project={} device={} message={}", time, device.getName(), device.getProject().getName(), line);
+        writeApi.writePoint(bucketName, orgName, point);
     }
 
     // ************************************************************************
