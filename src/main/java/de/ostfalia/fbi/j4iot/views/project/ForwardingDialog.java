@@ -18,7 +18,7 @@ public class ForwardingDialog extends GenericFormDialog<Forwarding> {
     TextField name = new TextField("Forwarding name");
     TextField forwardFromUrl = new TextField("Forward from URL");
     TextField forwardToUrl = new TextField("Forward to URL");
-    Checkbox extendUrl = new Checkbox("Add remainder of \"from\"-URL to \"to\"-URL");
+    Checkbox extendUrl = new Checkbox("Add remainder of \"from\"-URL to \"to\"-URL (add / to to-URL if needed!)");
     Checkbox enableMethodGet = new Checkbox("Support HTTP GET method");
     DateTimePicker lastUseAt = new DateTimePicker("Last use");
 

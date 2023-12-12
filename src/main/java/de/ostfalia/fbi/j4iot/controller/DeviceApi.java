@@ -126,7 +126,7 @@ public class DeviceApi {
             String path = apiConfiguration.getServletContextPath() + request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE).toString();
             String remainingPath = new AntPathMatcher().extractPathWithinPattern(path, request.getRequestURI());
             log.info("path={} remainingPath={}", path, remainingPath);
-            targetUrl = targetUrl + "/" + remainingPath;
+            targetUrl = targetUrl + remainingPath;
         }
         log.info("Forwarding project={} forward={} url={}", projectName, forwardingName, targetUrl);
 
