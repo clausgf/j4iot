@@ -21,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.HandlerMapping;
 
 @RestController
+
 @RequestMapping("${j4iot.api.path:/api}")
 public class DeviceApi {
 
@@ -138,7 +139,7 @@ public class DeviceApi {
                     String.class
             );
         } catch (Exception e) {
-            log.info("Forwarding request to url={}: {}", targetUrl, e.getMessage());
+            log.info("Error forwarding request to url={}: {}", targetUrl, e.getMessage());
             if (e instanceof HttpClientErrorException ex) {
                 return ResponseEntity
                         .status(ex.getStatusCode())
@@ -146,7 +147,7 @@ public class DeviceApi {
                         .body(ex.getResponseBodyAsString());
             }
         }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Unknown error forwarding the request (is the url valid?)");
     }
 
     // ***********************************************************************
