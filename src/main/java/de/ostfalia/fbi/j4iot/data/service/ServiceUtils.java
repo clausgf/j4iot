@@ -47,7 +47,7 @@ public class ServiceUtils {
         ServiceUtils.checkName(projectName);
 
         try {
-            TokenAuthenticationToken token = (TokenAuthenticationToken) SecurityContextHolder.getContext().getAuthentication().getDetails();
+            TokenAuthenticationToken token = (TokenAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
             Device device = (Device) token.getDetails();
             if ( !projectName.equals(device.getProject().getName()) ) {
                 throw new Exception();

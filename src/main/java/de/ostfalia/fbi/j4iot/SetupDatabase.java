@@ -151,7 +151,7 @@ public class SetupDatabase implements CommandLineRunner {
         Forwarding forwarding1 = new Forwarding(thingpulse);
         thingpulse.getForwardings().add(forwarding1);
         forwarding1.setName("fwd");
-        forwarding1.setForwardToUrl("http://nowhere.com/api");
+        forwarding1.setForwardToUrl("https://httpbin.org/headers");
         forwarding1 = forwardingRepository.save(forwarding1);
         log.info("project=thingpulse Forwarding1={}", forwarding1.getName());
 

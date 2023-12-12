@@ -18,7 +18,6 @@ public class ApiConfiguration {
     public int getPort() {
         return port;
     }
-
     public void setPort(int port) {
         this.port = port;
     }
@@ -26,7 +25,6 @@ public class ApiConfiguration {
     public String getPath() {
         return path;
     }
-
     public void setPath(String path) {
         this.path = path;
     }
@@ -48,5 +46,12 @@ public class ApiConfiguration {
     }
     public void setLogging(Boolean logging) {
         this.logging = logging;
+    }
+
+    public String getServletContextPath() {
+        return servletContextPath;
+    }
+    public void setServletContextPath(String servletContextPath) {
+        this.servletContextPath = servletContextPath;
     }
 }
