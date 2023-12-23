@@ -102,7 +102,7 @@ public class FileApi {
 
     // ***********************************************************************
 
-    @Operation(summary = "Get response header for a resource from the file system; if the device specific resource is not available, return a project wide default")
+    @Operation(summary = "Get the response header and status for a resource from the file system; if the device specific resource is not available, return a project wide default")
     @RequestMapping (method = RequestMethod.HEAD, path = "/file/{projectName}/{deviceName}/{filename}")
     public ResponseEntity<String> headFileWithNames(
             @PathVariable String projectName,

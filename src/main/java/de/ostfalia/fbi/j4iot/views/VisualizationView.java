@@ -17,7 +17,7 @@ public class VisualizationView extends VerticalLayout {
 
     Logger log = LoggerFactory.getLogger(VisualizationView.class);
     @Value("${j4iot.visualization.url}") String visualizationUrl;
-
+    
     public VisualizationView() {
         setSpacing(false);
 

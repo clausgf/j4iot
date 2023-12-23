@@ -26,6 +26,7 @@ import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.server.VaadinServletRequest;
 import com.vaadin.flow.server.auth.AccessAnnotationChecker;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
@@ -126,6 +127,9 @@ public class MainLayout extends AppLayout {
     // ************************************************************************
 
     private void addDrawerContent() {
+        VaadinServletRequest request = VaadinServletRequest.getCurrent();
+        log.info("getUserPrincipal={}", request.getUserPrincipal());
+
         H1 appName = new H1("j4iot");
         appName.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
         Header header = new Header(appName);
