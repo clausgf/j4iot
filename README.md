@@ -6,6 +6,7 @@
 - [ ] Admin-Rolle: Alle Projekte etc. anzeigen, find...Auth überarbeiten
 - [ ] Provisioning Confirmation
 - [ ] Logout (evtl. weitere Seiten): immer auf .../ui verweisen!
+- [ ] Beispieldaten: Bei Exceptions wegen Duplicate Keys nicht komplett abbrechen
 
 ### Dashboard
 - [ ] Dashboard mit einzelnen Panels
@@ -18,6 +19,7 @@
 ### Epaper
 - [ ] Elegante Lösung für Einbinden anderer Services wie Epaper
 - [ ] Epaper: Gesamten Ansatz überdenken, von garnix lernen
+- [ ] Use Case Sekretariat: Meldung anzeigen; dafür brauchen wir ein UI!
 
 ## Konzepte
 - [ ] Inwieweit können/sollten wir den Provisioning-Prozess an OAUTH2 orientieren?
