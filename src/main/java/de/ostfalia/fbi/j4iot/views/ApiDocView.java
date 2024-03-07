@@ -8,6 +8,7 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 
 // https://www.baeldung.com/spring-rest-openapi-documentation
 
@@ -17,16 +18,14 @@ import org.slf4j.LoggerFactory;
 public class ApiDocView extends VerticalLayout {
 
     Logger log = LoggerFactory.getLogger(ApiDocView.class);
-    // TODO find a better way to determine the url from the configuration
-    // TODO secure all springdoc endpoints!
-    private String springDocSwaggerUrl = "/../api-doc/swagger-ui/index.html";
+    @Value("${springdoc.swagger-ui.path}") private String springDocSwaggerUrl = "/../api-doc/swagger-ui.html";
 
     public ApiDocView() {
         setSpacing(false);
 
         Button b = new Button("Open API doc in new Window", event -> {
             log.info("Opening url {}", springDocSwaggerUrl);
-            UI.getCurrent().getPage().open(springDocSwaggerUrl);
+            UI.getCurrent().getPage().open("/iot"+springDocSwaggerUrl);
         });
         add(b);
 
