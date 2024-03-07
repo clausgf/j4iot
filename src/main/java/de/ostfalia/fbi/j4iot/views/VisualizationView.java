@@ -1,7 +1,6 @@
 package de.ostfalia.fbi.j4iot.views;
 
-import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.html.IFrame;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
@@ -16,16 +15,14 @@ import org.springframework.beans.factory.annotation.Value;
 public class VisualizationView extends VerticalLayout {
 
     Logger log = LoggerFactory.getLogger(VisualizationView.class);
-    @Value("${j4iot.visualization.url}") String visualizationUrl;
+    @Value("${j4iot.visualization.frame}") private String springDocSwaggerUrl = "https://iot-i.ostfalia.de/grafana/public-dashboards/3ec9aa9dec4d45eb8f67cfd9bb223ed0";
     
     public VisualizationView() {
-        setSpacing(false);
-
-        Button b = new Button("Open Visualization in new Window", event -> {
-            log.info("Opening url {}", visualizationUrl);
-            UI.getCurrent().getPage().open(visualizationUrl);
-        });
-        add(b);
+        IFrame frame = new IFrame();
+        frame.setSrc(springDocSwaggerUrl);
+        frame.setHeight("100%");
+        frame.setWidth("100%");
+        add(frame);
 
         setSizeFull();
         setJustifyContentMode(JustifyContentMode.CENTER);
