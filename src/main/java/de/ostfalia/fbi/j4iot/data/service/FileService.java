@@ -1,6 +1,8 @@
 package de.ostfalia.fbi.j4iot.data.service;
 
 import de.ostfalia.fbi.j4iot.data.entity.Device;
+import de.ostfalia.fbi.j4iot.data.entity.Project;
+import org.reflections.vfs.Vfs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +19,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
+import java.util.List;
+import java.util.ArrayList;
 
 @Service
 public class FileService {
@@ -42,6 +46,14 @@ public class FileService {
         }
     }
 
+    public boolean isProjectFile(Project project, Path path){
+        if (project == null || path == null){
+            return false;
+        }
+        Path projectBase = Paths.get(basePath.toString(), project.getName(), String.valueOf(path.getFileName()));
+        return projectBase.equals(path);
+    }
+
     public Resource loadFileAsResource(Device d, String fileName) throws FileNotFoundException {
         Assert.notNull(d, "Must specify a valid device");
         Assert.notNull(fileName, "Must specify a valid filename");
@@ -59,6 +71,145 @@ public class FileService {
         }
 
         return new FileSystemResource(p);
+    }
+
+    public Resource loadFileAsResource(Project project, String fileName) throws FileNotFoundException{
+        Assert.notNull(project, "Must specify a valid project");
+        Assert.notNull(fileName, "Must specify a valid filename");
+
+        Path projectBase = Paths.get(basePath.toString(), project.getName());
+        Path p = Paths.get(projectBase.toString(), fileName).toAbsolutePath().normalize();
+
+        if (!p.startsWith(projectBase) || !Files.exists(p)) {
+            throw new FileNotFoundException();
+        }
+
+        return new FileSystemResource(p);
+    }
+
+    public boolean exists(Project project, String fileName){
+        Assert.notNull(project, "Must specify a valid project");
+        Assert.notNull(fileName, "Must specify a valid filename");
+
+        Path projectBase = Paths.get(basePath.toString(), project.getName());
+        Path p = Paths.get(projectBase.toString(), fileName).toAbsolutePath().normalize();
+
+        return p.startsWith(projectBase) && Files.exists(p);
+    }
+
+    public boolean exists(Device device, String fileName){
+        Assert.notNull(device, "Must specify a valid device");
+        Assert.notNull(fileName, "Must specify a valid filename");
+
+        // determine path
+        Path projectBase = Paths.get(basePath.toString(), device.getProject().getName());
+        Path p = Paths.get(projectBase.toString(), device.getName(), fileName).toAbsolutePath().normalize();
+
+        return p.startsWith(projectBase) && Files.exists(p);
+    }
+
+    public List<Resource> loadFilesAsResources(Device device) throws IOException {
+        Assert.notNull(device, "Must specify a valid device");
+
+        Path projectBase = Paths.get(basePath.toString(), device.getProject().getName());
+        Path p = Paths.get(projectBase.toString(), device.getName()).toAbsolutePath().normalize();
+
+        if (!p.startsWith(projectBase) || !Files.exists(p)) {
+            throw new FileNotFoundException();
+        }
+
+        List<Resource> result = new ArrayList<>();
+        result.add(new FileSystemResource(p));
+        for(File file : result.get(0).getFile().listFiles()){
+            result.add(new FileSystemResource(file));
+        }
+        return result;
+    }
+
+    public List<Resource> loadFilesAsResources(Project project) throws IOException {
+        Assert.notNull(project, "Must specify a valid device");
+
+        Path projectBase = Paths.get(basePath.toString(), project.getName());
+        Path p = Paths.get(projectBase.toString()).toAbsolutePath().normalize();
+
+        if (!p.startsWith(projectBase) || !Files.exists(p)) {
+            throw new FileNotFoundException();
+        }
+
+        List<Resource> result = new ArrayList<>();
+        result.add(new FileSystemResource(p));
+        for(File file : result.get(0).getFile().listFiles()){
+            result.add(new FileSystemResource(file));
+        }
+        return result;
+    }
+
+    public boolean createFolderFor(Device device) throws IOException {
+        Assert.notNull(device, "Must specify a valid device");
+
+        Path projectBase = Paths.get(basePath.toString(), device.getProject().getName());
+        Path p = Paths.get(projectBase.toString(), device.getName()).toAbsolutePath().normalize();
+
+        if (!p.startsWith(projectBase)) {
+            throw new FileNotFoundException();
+        }
+        if (Files.exists(p)){
+            return false;
+        }else{
+            Files.createDirectory(p);
+            return true;
+        }
+    }
+
+    public boolean createFolderFor(Project project) throws IOException {
+        Assert.notNull(project, "Must specify a valid device");
+
+        Path projectBase = Paths.get(basePath.toString(), project.getName());
+        Path p = Paths.get(projectBase.toString()).toAbsolutePath().normalize();
+
+        if (!p.startsWith(projectBase)) {
+            throw new FileNotFoundException();
+        }
+        if (Files.exists(p)){
+            return false;
+        }else{
+            Files.createDirectory(p);
+            return true;
+        }
+    }
+
+    public boolean createFileFor(Device device, String fileName) throws IOException {
+        Assert.notNull(device, "Must specify a valid device");
+
+        Path projectBase = Paths.get(basePath.toString(), device.getProject().getName());
+        Path p = Paths.get(projectBase.toString(), device.getName(), fileName).toAbsolutePath().normalize();
+
+        if (!p.startsWith(projectBase) || !Files.exists(p)) {
+            throw new FileNotFoundException();
+        }
+        if (Files.exists(p)){
+            return false;
+        }else{
+            Files.createFile(p);
+            return true;
+        }
+    }
+
+    public boolean createFileFor(Project project, String fileName) throws IOException {
+        Assert.notNull(project, "Must specify a valid device");
+
+        Path projectBase = Paths.get(basePath.toString(), project.getName());
+        Path p = Paths.get(projectBase.toString(), fileName).toAbsolutePath().normalize();
+
+        if (!p.startsWith(projectBase) || !Files.exists(p)) {
+            throw new FileNotFoundException();
+        }
+        if (Files.exists(p)){
+            return false;
+        }else{
+            Files.createFile(p);
+            return true;
+        }
     }
 
     public String calcEtag(Resource r) {
