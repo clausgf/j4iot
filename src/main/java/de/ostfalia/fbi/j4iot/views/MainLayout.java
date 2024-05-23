@@ -17,7 +17,6 @@ import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.menubar.MenuBarVariant;
-import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -36,15 +35,13 @@ import de.ostfalia.fbi.j4iot.data.service.ProjectService;
 import de.ostfalia.fbi.j4iot.data.service.UserService;
 import de.ostfalia.fbi.j4iot.security.SecurityService;
 import de.ostfalia.fbi.j4iot.views.about.AboutView;
-import de.ostfalia.fbi.j4iot.views.device.DeviceDashboard;
-import de.ostfalia.fbi.j4iot.views.device.DeviceList;
-import de.ostfalia.fbi.j4iot.views.device.DeviceSettings;
+import de.ostfalia.fbi.j4iot.views.device.*;
+import de.ostfalia.fbi.j4iot.views.project.ProjectEditor;
 import de.ostfalia.fbi.j4iot.views.project.ProjectList;
 import de.ostfalia.fbi.j4iot.views.project.ProjectSettings;
 import de.ostfalia.fbi.j4iot.views.user.UserMasterDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.util.Optional;
 
@@ -73,8 +70,11 @@ public class MainLayout extends AppLayout {
     SideNavItem navItemProjectDevices = new SideNavItem("Devices in project", DefaultView.class, VaadinIcon.ROCKET.create());
     SideNavItem navItemProjectDashboard = new SideNavItem("Project dashboard", DefaultView.class, VaadinIcon.DASHBOARD.create());
     SideNavItem navItemProjectSettings = new SideNavItem("Project settings", DefaultView.class, VaadinIcon.SLIDERS.create());
+    SideNavItem navItemProjectEditor = new SideNavItem("Project editor", DefaultView.class, VaadinIcon.EDIT.create());
     SideNavItem navItemDeviceDashboard = new SideNavItem("Device dashboard", DefaultView.class, VaadinIcon.DASHBOARD.create());
     SideNavItem navItemDeviceSettings = new SideNavItem("Device settings", DefaultView.class, VaadinIcon.SLIDERS.create());
+    SideNavItem navItemDeviceEditor = new SideNavItem("Device editor", DefaultView.class, VaadinIcon.EDIT.create());
+    SideNavItem navItemDeviceGraph = new SideNavItem("Device chart", DefaultView.class, VaadinIcon.CHART.create());
 
     // ************************************************************************
 
@@ -120,7 +120,6 @@ public class MainLayout extends AppLayout {
         //avatar.setImage(pictureUrl);
         MenuItem userMenuItem = userMenuBar.addItem(avatar);
         SubMenu userSubMenu = userMenuItem.getSubMenu();
-        userSubMenu.addItem("Change password", e -> passwordChangeDialog.open());
         userSubMenu.addItem("Logout", e -> securityService.logout());
     }
 
@@ -148,11 +147,14 @@ public class MainLayout extends AppLayout {
         projectNav.addItem(navItemProjectDevices);
         projectNav.addItem(navItemProjectDashboard);
         projectNav.addItem(navItemProjectSettings);
+        projectNav.addItem(navItemProjectEditor);
 
         SideNav deviceNav = new SideNav();
         deviceNav.setLabel("Device");
         deviceNav.addItem(navItemDeviceDashboard);
         deviceNav.addItem(navItemDeviceSettings);
+        deviceNav.addItem(navItemDeviceEditor);
+        deviceNav.addItem(navItemDeviceGraph);
 
         SideNav adminNav = new SideNav();
         adminNav.setLabel("Admin");
@@ -243,20 +245,6 @@ public class MainLayout extends AppLayout {
         });
         cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         dialog.getFooter().add(cancel);
-        Button save = new Button("Save", event -> {
-            try {
-                String username = securityService.getAuthenticatedUsername();
-                userService.updatePassword(username, oldPassword.getValue(), newPassword.getValue());
-                Notification.show("Password changed!");
-            } catch (UsernameNotFoundException e) {
-                Notification.show("Wrong username/password, data not modified!");
-            }
-            oldPassword.clear();
-            newPassword.clear();
-            dialog.close();
-        });
-        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        dialog.getFooter().add(save);
         return dialog;
     }
 
@@ -266,26 +254,35 @@ public class MainLayout extends AppLayout {
         navItemProjectDevices.setVisible(currentProject != null);
         navItemProjectDashboard.setVisible(currentProject != null);
         navItemProjectSettings.setVisible(currentProject != null);
+        navItemProjectEditor.setVisible(currentProject != null);
 
         if (currentProject != null) {
             navItemProjectDevices.setPath(DeviceList.class, DeviceList.getRouteParameters(currentProject));
             navItemProjectDashboard.setPath(DefaultView.class);
             navItemProjectSettings.setPath(ProjectSettings.class, ProjectSettings.getRouteParameters(currentProject));
+            navItemProjectEditor.setPath(ProjectEditor.class, ProjectEditor.getRouteParameters(currentProject));
         } else {
             navItemProjectDevices.setPath(DefaultView.class);
             navItemProjectDashboard.setPath(DefaultView.class);
             navItemProjectSettings.setPath(DefaultView.class);
+            navItemProjectEditor.setPath(DefaultView.class);
         }
 
         navItemDeviceDashboard.setVisible(currentDevice != null);
         navItemDeviceSettings.setVisible(currentDevice != null);
+        navItemDeviceEditor.setVisible(currentDevice != null);
+        navItemDeviceGraph.setVisible(currentDevice != null);
 
         if (currentDevice != null) {
             navItemDeviceDashboard.setPath(DeviceDashboard.class, DeviceDashboard.getRouteParameters(currentDevice));
             navItemDeviceSettings.setPath(DeviceSettings.class, DeviceSettings.getRouteParameters(currentProject, currentDevice));
+            navItemDeviceEditor.setPath(DeviceEditor.class, DeviceEditor.getRouteParameters(currentProject, currentDevice));
+            navItemDeviceGraph.setPath(DeviceGraph.class, DeviceGraph.getRouteParameters(currentProject, currentDevice));
         } else {
             navItemDeviceDashboard.setPath(DefaultView.class);
             navItemDeviceSettings.setPath(DefaultView.class);
+            navItemDeviceEditor.setPath(DefaultView.class);
+            navItemDeviceGraph.setPath(DefaultView.class);
         }
 
         String projectName = (currentProject != null) ? currentProject.getName() : "";
@@ -362,7 +359,7 @@ public class MainLayout extends AppLayout {
     @Override
     protected void afterNavigation() {
         super.afterNavigation();
-        updatePageTitle();;
+        updatePageTitle();
     }
 
     public void updatePageTitle() {
