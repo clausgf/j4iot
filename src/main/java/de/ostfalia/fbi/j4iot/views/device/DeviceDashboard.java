@@ -39,6 +39,10 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
 
     private final DeviceService service;
 
+    private final Text lastSeenText = new Text("");
+    private final Text lastProvisioningText = new Text("");
+    private final Text lastProvisiongRequestText = new Text("");
+
     // ***********************************************************************
 
     public static RouteParameters getRouteParameters(Device device) {
@@ -84,17 +88,9 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
         H4 title = new H4("Overview");
         card.add(title);
 
-        if (item == null) {
-            Text empty = new Text("Device not found.");
-            card.add(empty);
-            return card;
-        }
-
-        Device device = item;
-
-        Div lastProvisioningRequest = new Div(new Text("Last provisioning request"), new Text(device.getLastProvisioningRequestAt().toString()));
-        Div lastProvisioning = new Div(new Text("Last provisioning"), new Text(device.getLastProvisionedAt().toString()));
-        Div lastSeen = new Div(new Text("Last seen"), new Text(device.getLastSeenAt().toString()));
+        Div lastProvisioningRequest = new Div(new Text("Last provisioning request: "), lastProvisiongRequestText);
+        Div lastProvisioning = new Div(new Text("Last provisioning: "), lastProvisioningText);
+        Div lastSeen = new Div(new Text("Last seen: "), lastSeenText);
         card.add(description, location, lastProvisioningRequest, lastProvisioning, lastSeen);
 
         return card;
@@ -109,6 +105,9 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
         Optional<Long> id = routeParameters.getLong(ID_ROUTING_PARAMETER);
         if (id.isPresent()) {
             item = service.findByUserAuthAndId(id.get()).orElse(null);
+            lastSeenText.setText(item.getLastSeenAt() != null ? item.getLastSeenAt().toString() : "unknown");
+            lastProvisioningText.setText(item.getLastProvisionedAt() != null ? item.getLastProvisionedAt().toString() : "unknown");
+            lastProvisiongRequestText.setText(item.getLastProvisioningRequestAt() != null ? item.getLastProvisioningRequestAt().toString() : "unknown");
         } else {
             log.error("Invalid route parameter, expected id");
         }
@@ -136,11 +135,7 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
 
     @Override
     public String getPageTitle() {
-        String title = "Dashboard for unknown";
-        if (item != null) {
-            title = String.format("Dashboard: %s (%s)", item.getName(), item.getProject().getName());
-        }
-        return title;
+        return DeviceUtil.getPageTitle("Dashboard", item);
     }
 
     // ***********************************************************************

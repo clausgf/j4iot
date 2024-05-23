@@ -15,6 +15,8 @@ import jakarta.annotation.security.PermitAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 // TODO base this list on a generic one
 @PermitAll
 @Route(value="/projects", layout = MainLayout.class)
@@ -103,8 +105,14 @@ public class ProjectList extends GenericList<Project> {
         if (service == null) {
             grid.setItems();
         } else {
-            grid.setItems(service.findAllByAuth());
+            grid.setItems(filterItems(service.findAllByAuth()));
         }
+    }
+
+    private List<Project> filterItems(List<Project> projects){
+        return projects.stream().filter(x -> filterText.getValue().isEmpty()
+                || x.getTags().contains(filterText.getValue())
+                || x.getName().contains(filterText.getValue())).toList();
     }
 
     // ************************************************************************

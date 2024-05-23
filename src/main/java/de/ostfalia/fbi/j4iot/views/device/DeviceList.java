@@ -11,10 +11,12 @@ import de.ostfalia.fbi.j4iot.data.service.DeviceService;
 import de.ostfalia.fbi.j4iot.data.service.ProjectService;
 import de.ostfalia.fbi.j4iot.views.GenericList;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
+import de.ostfalia.fbi.j4iot.views.project.ProjectUtil;
 import jakarta.annotation.security.PermitAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Optional;
 
 @PermitAll
@@ -24,9 +26,9 @@ public class DeviceList extends GenericList<Device> implements HasDynamicTitle, 
     // ************************************************************************
 
     public final static String ID_ROUTING_PARAMETER = "id";
-    private Logger log = LoggerFactory.getLogger(DeviceList.class);
-    private ProjectService projectService;
-    private DeviceService deviceService;
+    private final Logger log = LoggerFactory.getLogger(DeviceList.class);
+    private final ProjectService projectService;
+    private final DeviceService deviceService;
 
     private Project project;
 
@@ -84,9 +86,9 @@ public class DeviceList extends GenericList<Device> implements HasDynamicTitle, 
 
     @Override
     public String getPageTitle() {
-        String title = "Devices in any project";
-        if (project != null) {
-            title = "Devices in " + project.getName() + " project";
+        String title = "Device list";
+        if (project != null){
+            title = ProjectUtil.getPageTitle("Device list", project);
         }
         return title;
     }
@@ -96,9 +98,7 @@ public class DeviceList extends GenericList<Device> implements HasDynamicTitle, 
         super.beforeEnter(event);
         project = null;
         Optional<Long> id = routeParameters.getLong(ID_ROUTING_PARAMETER);
-        if (id.isPresent()) {
-            project = projectService.findByAuthAndId(id.get()).orElse(null);
-        }
+        id.ifPresent(aLong -> project = projectService.findByAuthAndId(aLong).orElse(null));
     }
 
     @Override
@@ -136,11 +136,17 @@ public class DeviceList extends GenericList<Device> implements HasDynamicTitle, 
             grid.setItems();
         } else {
             if (project == null) {
-                grid.setItems(deviceService.findAllByUserAuth());
+                grid.setItems(filterItems(deviceService.findAllByUserAuth()));
             } else {
-                grid.setItems(deviceService.findAllByUserAuthAndProjectId(project.getId()));
+                grid.setItems(filterItems(deviceService.findAllByUserAuthAndProjectId(project.getId())));
             }
         }
+    }
+
+    private List<Device> filterItems(List<Device> projects){
+        return projects.stream().filter(x -> filterText.getValue().isEmpty()
+                || x.getTags().contains(filterText.getValue())
+                || x.getName().contains(filterText.getValue())).toList();
     }
 
     // ************************************************************************

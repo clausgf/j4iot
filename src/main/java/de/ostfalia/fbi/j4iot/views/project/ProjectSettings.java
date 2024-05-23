@@ -175,11 +175,7 @@ public class ProjectSettings extends GenericForm<Project> implements HasDynamicT
 
     @Override
     public String getPageTitle() {
-        String title = "Create project";
-        if (item != null) {
-            title = "Project settings: " + item.getName();
-        }
-        return title;
+        return ProjectUtil.getPageTitle("Project settings", item);
     }
 
     @Override

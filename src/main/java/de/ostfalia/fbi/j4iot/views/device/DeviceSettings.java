@@ -140,11 +140,7 @@ public class DeviceSettings extends GenericForm<Device> implements HasDynamicTit
 
     @Override
     public String getPageTitle() {
-        String title = "Create device in project " + project.getName();
-        if (item != null) {
-            title = "Device settings: " + item.getName();
-        }
-        return title;
+        return DeviceUtil.getPageTitle("Device settings", item);
     }
 
     @Override

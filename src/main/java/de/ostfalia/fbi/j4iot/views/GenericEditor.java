@@ -22,17 +22,11 @@ import de.f0rce.ace.AceEditor;
 import de.f0rce.ace.enums.AceMode;
 import de.f0rce.ace.enums.AceTheme;
 import de.ostfalia.fbi.j4iot.data.service.FileService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -40,17 +34,14 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.List;
 
 @CssImport(
         themeFor = "vaadin-grid",
         value = "./themes/j4iot/views/generic-editor.css"
 )
 public abstract class GenericEditor  extends Div implements BeforeEnterObserver {
-    private Logger log = LoggerFactory.getLogger(GenericEditor.class);
 
     private static final String ZONE_ID = "Europe/Berlin";
-    private static final String BROWSER_ROOT = "/iot-data/";
     protected final TreeGrid<File> tree = new TreeGrid<>();
     private File opendFile = null;
     protected final String COLUMN_FILE_KEY = "file_column";
@@ -59,14 +50,13 @@ public abstract class GenericEditor  extends Div implements BeforeEnterObserver 
     private final AceEditor editor = new AceEditor();
     private final Button editorSaveButton = new Button("Save");
     private final Button editorCancelButton = new Button("Cancel");
-    private final Button editorOpenButton = new Button("Open");
     private final Button editorDeleteButton = new Button("Delete");
     private final Button editorRenameButton = new Button("Rename");
 
-    private TextField name = new TextField("Filename");
-    private DateTimePicker createdAt = new DateTimePicker("Created at");
-    private DateTimePicker updatedAt = new DateTimePicker("Updated at");
-    private TextField size = new TextField("Size");
+    private final TextField name = new TextField("Filename");
+    private final DateTimePicker createdAt = new DateTimePicker("Created at");
+    private final DateTimePicker updatedAt = new DateTimePicker("Updated at");
+    private final TextField size = new TextField("Size");
 
     protected FileService fileService;
 
@@ -162,9 +152,7 @@ public abstract class GenericEditor  extends Div implements BeforeEnterObserver 
         double curSize = size;
         int i = 0;
         while(curSize > 1024){
-            if (curSize > 1024){
-                curSize /= 1024;
-            }
+            curSize /= 1024;
             i++;
         }
         return curSize + " " + units[i];
@@ -190,7 +178,7 @@ public abstract class GenericEditor  extends Div implements BeforeEnterObserver 
                 throw new RuntimeException(e);
             }
         });
-        tree.addHierarchyColumn(x -> x.getName()).setFlexGrow(1).setKey(COLUMN_FILE_KEY)
+        tree.addHierarchyColumn(File::getName).setFlexGrow(1).setKey(COLUMN_FILE_KEY)
                 .setComparator((s3fileA, s3fileB) -> {
                     if(!s3fileA.isFile() && !s3fileB.isFile()) {
                         return s3fileA.getName().compareToIgnoreCase(s3fileB.getName());
@@ -296,6 +284,22 @@ public abstract class GenericEditor  extends Div implements BeforeEnterObserver 
     }
 
     private void editorRename_Click(){
+        ConfirmDialog dialog = getConfirmDialog();
+        if (isFileOpened()){
+            File file = getOpendFile();
+            if (!file.getName().equals(name.getValue())){
+                if (Files.exists(Paths.get(file.getParent(), name.getValue()))){
+                    dialog.open();
+                }else{
+                    renameOpenedFile(name.getValue());
+                }
+            }
+        }else{
+            getOpenFileDialog().open();
+        }
+    }
+
+    private ConfirmDialog getConfirmDialog() {
         ConfirmDialog dialog = new ConfirmDialog();
         dialog.setHeader("File name already used!");
         dialog.setText("A file with the same file name already exists. Would you like to overwrite the file?");
@@ -308,22 +312,11 @@ public abstract class GenericEditor  extends Div implements BeforeEnterObserver 
             }
         });
         dialog.setConfirmText("Confirm");
-        dialog.addConfirmListener(e -> renameOpendFile(name.getValue()));
-        if (isFileOpened()){
-            File file = getOpendFile();
-            if (!file.getName().equals(name.getValue())){
-                if (Files.exists(Paths.get(file.getParent(), name.getValue()))){
-                    dialog.open();
-                }else{
-                    renameOpendFile(name.getValue());
-                }
-            }
-        }else{
-            getOpenFileDialog().open();
-        }
+        dialog.addConfirmListener(e -> renameOpenedFile(name.getValue()));
+        return dialog;
     }
 
-    private void renameOpendFile(String newName){
+    private void renameOpenedFile(String newName){
         File file = getOpendFile();
         File newFile = new File(String.valueOf(Paths.get(file.getParent(), newName)));
         tree.deselect(file);

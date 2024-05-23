@@ -2,13 +2,8 @@ package de.ostfalia.fbi.j4iot.views.project;
 
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.data.provider.hierarchy.TreeData;
-import com.vaadin.flow.router.BeforeEnterEvent;
-import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.RouteParam;
-import com.vaadin.flow.router.RouteParameters;
-import de.ostfalia.fbi.j4iot.data.entity.Device;
+import com.vaadin.flow.router.*;
 import de.ostfalia.fbi.j4iot.data.entity.Project;
-import de.ostfalia.fbi.j4iot.data.service.DeviceService;
 import de.ostfalia.fbi.j4iot.data.service.FileService;
 import de.ostfalia.fbi.j4iot.data.service.ProjectService;
 import de.ostfalia.fbi.j4iot.views.GenericEditor;
@@ -26,11 +21,11 @@ import java.util.Optional;
 
 @PermitAll
 @Route(value="/projects/:id?/editor", layout = MainLayout.class)
-public class ProjectEditor extends GenericEditor {
+public class ProjectEditor extends GenericEditor implements HasDynamicTitle {
     private Logger log = LoggerFactory.getLogger(DeviceEditor.class);
     public final static String ID_ROUTING_PARAMETER = "id";
     protected RouteParameters routeParameters = null;
-    private ProjectService projectService;
+    private final ProjectService projectService;
     private Project project;
 
     public ProjectEditor(ProjectService projectService, FileService fileService) {
@@ -77,5 +72,10 @@ public class ProjectEditor extends GenericEditor {
             throw new RuntimeException(e);
         }
         return result;
+    }
+
+    @Override
+    public String getPageTitle() {
+        return ProjectUtil.getPageTitle("Editor", project);
     }
 }
