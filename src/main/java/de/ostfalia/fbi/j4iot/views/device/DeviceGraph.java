@@ -51,10 +51,11 @@ public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver,
 
     private Button chartModeButton;
     private Button tableModeButton;
+    private Button allDataModeButton;
     private Grid<ChartItemData<Double, Instant>> table;
     private Component chart;
+    private Component allDataChart;
     private HorizontalLayout datePickerContainer;
-    private Series<Double> chartSeries;
     private List<String> fieldItems;
     private String selectedField;
     private DatePicker startDatePicker;
@@ -64,17 +65,14 @@ public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver,
     private long aggregateSec;
 
     ChartHelper<Double, Instant> helper;
+    ChartHelper<Double, Instant> allDataHelper;
 
     public DeviceGraph(ProjectService projectService, DeviceService deviceService, TimeseriesService timeseriesService) {
         this.projectService = projectService;
         this.deviceService = deviceService;
         this.timeseriesService = timeseriesService;
-        helper = new SOChartHelper();
         createHeaderContainer();
         createMainContainer();
-
-        activateChartMode();
-        setData(loadData());
     }
 
     public static RouteParameters getRouteParameters(Project project, Device device) {
@@ -108,6 +106,7 @@ public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver,
         }
 
         setData(loadData());
+        //activateChartMode();
     }
 
     @Override
@@ -135,6 +134,11 @@ public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver,
         tableModeButton.addClickListener(x -> activateTableMode());
         modeContainer.add(tableModeButton);
 
+        allDataModeButton = new Button("Alle Daten");
+        allDataModeButton.setIcon((VaadinIcon.CHART.create()));
+        allDataModeButton.addClickListener(x -> activateAllDataMode());
+        modeContainer.add(allDataModeButton);
+
         //Chart Value Field
         VerticalLayout fieldContainer = new VerticalLayout();
         container.add(fieldContainer);
@@ -147,10 +151,12 @@ public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver,
 
         //Chart Value Time Period
         List<TimePeriodItem> timePeriodItems = new ArrayList<>();
-        timePeriodItems.add(new TimePeriodItem("Custom", 0, null));
-        timePeriodItems.add(new TimePeriodItem("Letzten %d Minuten", 5, ChronoUnit.MINUTES));
-        timePeriodItems.add(new TimePeriodItem("Letzten %d Minuten", 10, ChronoUnit.MINUTES));
-        timePeriodItems.add(new TimePeriodItem("Letzte %d Stunde", 10, ChronoUnit.HOURS));
+        timePeriodItems.add(new TimePeriodItem("Eigen", 0, ChronoUnit.MINUTES));
+        timePeriodItems.add(new TimePeriodItem("Letzten %d Minuten", 30, ChronoUnit.MINUTES));
+        timePeriodItems.add(new TimePeriodItem("Letzte %d Stunde", 1, ChronoUnit.HOURS));
+        timePeriodItems.add(new TimePeriodItem("Letzten %d Stunde", 12, ChronoUnit.HOURS));
+        timePeriodItems.add(new TimePeriodItem("Letzten %d Stunde", 24, ChronoUnit.HOURS));
+        timePeriodItems.add(new TimePeriodItem("Letzte Woche", 24*7, ChronoUnit.HOURS));
 
         VerticalLayout timePeriodContainer = new VerticalLayout();
         container.add(timePeriodContainer);
@@ -181,8 +187,7 @@ public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver,
         container.add(aggregateContainer);
 
         List<AggregateItem> aggregateItems = new ArrayList<>();
-        aggregateItems.add(new AggregateItem("5min", Duration.ofMinutes(5).toSeconds()));
-        aggregateItems.add(new AggregateItem("15min", Duration.ofMinutes(15).toSeconds()));
+        aggregateItems.add(new AggregateItem("30min", Duration.ofMinutes(30).toSeconds()));
         aggregateItems.add(new AggregateItem("1h", Duration.ofHours(1).toSeconds()));
         aggregateItems.add(new AggregateItem("1 Tag", Duration.ofDays(1).toSeconds()));
         aggregateItems.add(new AggregateItem("1 Woche", Duration.ofDays(7).toSeconds()));
@@ -197,7 +202,13 @@ public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver,
     private void createMainContainer(){
         HorizontalLayout mainContainer = new HorizontalLayout();
         add(mainContainer);
-        chartSeries = new Series<>("Data", new Double[]{});
+
+        allDataHelper = new SOChartHelper();
+        allDataChart = allDataHelper.build(new ArrayList<>());
+        allDataChart.setClassName(MAIN_DATA_CONTROL_CSS_CLASS);
+        mainContainer.add(allDataChart);
+
+        helper = new SOChartHelper();
         chart = helper.build(new ArrayList<>());
         chart.setClassName(MAIN_DATA_CONTROL_CSS_CLASS);
         mainContainer.setSizeFull();
@@ -211,11 +222,20 @@ public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver,
     }
 
     private void setData(List<ChartItem<Double, Instant>> records){
-        if (table == null || chartSeries == null || chart == null) return;
-        if (records.size() > 0){
-            table.setItems(records.get(0).getData());//TODO
+        if (table == null || chart == null || allDataChart == null) return;
+        if (allDataChart.isVisible()){
+            allDataHelper.updateValues(allDataChart, records);
         }
-        helper.updateValues(chart, records);
+        if (records.size() > 0 && chart.isVisible()){
+            for(ChartItem<Double, Instant> record : records){
+                if (record.getName().equals(selectedField)){
+                    table.setItems(record.getData());
+                    List<ChartItem<Double, Instant>> single = new ArrayList<>();
+                    single.add(new ChartItem<>("Data", record.getData()));
+                    helper.updateValues(chart, single);
+                }
+            }
+        }
     }
 
     private List<ChartItem<Double, Instant>> loadData(){
@@ -258,7 +278,7 @@ public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver,
             return result;
         }
 
-        List<FluxTable> tables = timeseriesService.loadMeasurementFields("epaper", "system");
+        List<FluxTable> tables = timeseriesService.loadMeasurementFields(project.getName(), "system");
         for (FluxTable table : tables){
             for(FluxRecord record : table.getRecords()){
                 result.add(record.getValue().toString());
@@ -275,17 +295,32 @@ public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver,
         changeMode(VisualizationMode.TABLE);
     }
 
+    private void activateAllDataMode(){
+        changeMode(VisualizationMode.ALL_DATA);
+    }
+
     private void changeMode(VisualizationMode mode){
         if (mode == VisualizationMode.CHART){
             chartModeButton.setClassName("active-show-button");
             tableModeButton.setClassName("deactive-show-button");
+            allDataModeButton.setClassName("deactive-show-button");
             chart.setVisible(true);
             table.setVisible(false);
+            allDataChart.setVisible(false);
         }else if (mode == VisualizationMode.TABLE){
-            tableModeButton.setClassName("active-show-button");
             chartModeButton.setClassName("deactive-show-button");
+            tableModeButton.setClassName("active-show-button");
+            allDataModeButton.setClassName("deactive-show-button");
             chart.setVisible(false);
             table.setVisible(true);
+            allDataChart.setVisible(false);
+        }else if(mode == VisualizationMode.ALL_DATA){
+            chartModeButton.setClassName("deactive-show-button");
+            tableModeButton.setClassName("deactive-show-button");
+            allDataModeButton.setClassName("active-show-button");
+            chart.setVisible(false);
+            table.setVisible(false);
+            allDataChart.setVisible(true);
         }
     }
 
@@ -303,12 +338,18 @@ public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver,
 
     private void changeChartValueTimePeriod(TimePeriodItem timePeriod){
         if (timePeriod != null) {
-            if (timePeriod.text().equals("Custom")) {
+            if (timePeriod.text().equals("Eigen")) {
                 datePickerContainer.setVisible(true);
                 changeChartValueTimePeriod(localDateToInstant(startDatePicker.getValue()), localDateToInstant(endDatePicker.getValue()));
             } else {
                 datePickerContainer.setVisible(false);
-                changeChartValueTimePeriod(Instant.now().minus(timePeriod.value(), timePeriod.unit()), Instant.now());
+                try {
+                    changeChartValueTimePeriod(Instant.now().minus(timePeriod.value(), timePeriod.unit()), Instant.now());
+                }
+                catch(NullPointerException e){
+                    int a = 0;
+                    a++;
+                }
             }
         }
     }
@@ -329,7 +370,8 @@ public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver,
 
     enum VisualizationMode{
         CHART,
-        TABLE
+        TABLE,
+        ALL_DATA
     }
 
     record AggregateItem(String text, long sec){
