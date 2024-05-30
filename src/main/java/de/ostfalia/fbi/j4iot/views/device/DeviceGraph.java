@@ -35,7 +35,7 @@ import java.util.*;
 @AnonymousAllowed
 @Route(value="/projects/:projectId/devices/:id?/graph", layout = MainLayout.class)
 public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver, HasDynamicTitle {
-    private static final boolean IS_LOCALHOST = true;
+    private static final boolean IS_LOCALHOST = false;
     private static final String DATE_FORMAT = "dd.MM.yyyy";
     private static final DateTimeFormatter formater = DateTimeFormatter.ofPattern(DATE_FORMAT +" HH:mm").localizedBy(Locale.GERMANY);
     private static final String MAIN_DATA_CONTROL_CSS_CLASS = "main-controls";
@@ -64,8 +64,8 @@ public class DeviceGraph  extends VerticalLayout implements BeforeEnterObserver,
     private Instant endDate;
     private long aggregateSec;
 
-    ChartHelper<Double, Instant> helper;
-    ChartHelper<Double, Instant> allDataHelper;
+    private ChartHelper<Double, Instant> helper;
+    private ChartHelper<Double, Instant> allDataHelper;
 
     public DeviceGraph(ProjectService projectService, DeviceService deviceService, TimeseriesService timeseriesService) {
         this.projectService = projectService;
