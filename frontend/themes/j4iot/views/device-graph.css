@@ -1,0 +1,12 @@
+.active-show-button {
+    border-bottom: 3px solid blue;
+}
+
+.none-active-show-button {
+    border-bottom: none;
+}
+
+.main-controls {
+    height: 700px;
+    width: 1300px;
+}

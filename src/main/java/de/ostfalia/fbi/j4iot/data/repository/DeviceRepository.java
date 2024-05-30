@@ -24,20 +24,12 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
     @Query("select d from Device d where d.project.name = :projectName and d.name = :name")
     Optional<Device> findByProjectNameAndName(@Param("projectName") String projectName, @Param("name") String name);
 
-    @Query("select d from Device d join d.project.users u where u.id = :userId order by d.name")
-    List<Device> findAllByUserId(@Param("userId") Long userId);
 
-    @Query("select d from Device d join d.project.users u where u.id = :userId and d.id = :id")
-    Optional<Device> findByUserIdAndId(@Param("userId") Long userId, @Param("id") Long id);
+    @Query("select d from Device d where d.project.id = :projectId order by d.name")
+    List<Device> findAllByProjectId(@Param("projectId") Long projectId);
 
-    @Query("select d from Device d join d.project.users u where u.id = :userId and d.project.id = :projectId order by d.name")
-    List<Device> findAllByUserIdAndProjectId(@Param("userId") Long userId, @Param("projectId") Long projectId);
-
-    @Query("select d from Device d join d.project.users u where u.id = :userId and d.project.id = :projectId and d.name = :name")
-    Optional<Device> findByUserIdAndProjectIdAndName(@Param("userId") Long userId, @Param("projectId") Long projectId, @Param("name") String name);
-
-    @Query("select d.name from Device d join d.project.users u where u.id = :userId and d.project.id = :projectId order by d.name")
-    List<String> findAllNamesByUserIdAndProjectId(@Param("userId") Long userId, @Param("projectId") Long projectId);
+    @Query("select d.name from Device d where d.project.id = :projectId order by d.name")
+    List<String> findAllNamesByProjectId(@Param("projectId") Long projectId);
 
     long countByProjectId(Long projectId);
 }

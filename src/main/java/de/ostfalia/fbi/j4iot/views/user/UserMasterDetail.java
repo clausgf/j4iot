@@ -3,10 +3,8 @@ package de.ostfalia.fbi.j4iot.views.user;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.dependency.Uses;
-import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
@@ -14,16 +12,11 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
-import com.vaadin.flow.data.binder.ValidationException;
-import com.vaadin.flow.data.binder.ValidationResult;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
@@ -32,15 +25,14 @@ import de.ostfalia.fbi.j4iot.data.entity.User;
 import de.ostfalia.fbi.j4iot.data.service.UserService;
 import de.ostfalia.fbi.j4iot.views.MainLayout;
 import jakarta.annotation.security.PermitAll;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import jakarta.annotation.security.RolesAllowed;
 
 import java.util.Optional;
 
 @PageTitle("Users")
 @Route(value="/users/:userId?/:action?(edit)", layout = MainLayout.class)
-// TODO @RolesAllowed("ADMIN")
-@PermitAll
+@RolesAllowed("ADMIN")
+//@PermitAll
 @Uses(Icon.class)
 public class UserMasterDetail extends Div implements BeforeEnterObserver {
 
@@ -50,11 +42,8 @@ public class UserMasterDetail extends Div implements BeforeEnterObserver {
     private final Grid<User> grid = new Grid<>(User.class, false);
 
     private TextField name = new TextField("Username");
-    private DateTimePicker createdAt = new DateTimePicker("Created at");;
-    private DateTimePicker updatedAt = new DateTimePicker("Updated at");;
-    private Checkbox enabled = new Checkbox("Enabled");
-    private final Dialog passwordChangeDialog = createPasswordChangeDialog();
-    private Button passwordButton = new Button("Change password");
+    private DateTimePicker createdAt = new DateTimePicker("Created at");
+    private DateTimePicker updatedAt = new DateTimePicker("Updated at");
     private PasswordField passwordField = new PasswordField("Password");
     private TextField firstName = new TextField("First name");
     private TextField lastName = new TextField("Last name");
@@ -94,11 +83,10 @@ public class UserMasterDetail extends Div implements BeforeEnterObserver {
 
         grid.setItems(userService.findAll());
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
-
         // when a row is selected or deselected, populate form
         grid.asSingleSelect().addValueChangeListener(event -> {
             if (event.getValue() != null) {
-                UI.getCurrent().navigate(String.format(USER_EDIT_ROUTE_TEMPLATE, event.getValue().getId()));
+                UI.getCurrent().navigate(String.format(USER_EDIT_ROUTE_TEMPLATE, event.getValue().getName()));
             } else {
                 clearForm();
                 UI.getCurrent().navigate(UserMasterDetail.class);
@@ -113,40 +101,11 @@ public class UserMasterDetail extends Div implements BeforeEnterObserver {
             clearForm();
             refreshGrid();
         });
-
-        saveCreateButton.addClickListener(e -> {
-            try {
-                if (this.user == null) {
-                    String password = passwordField.getValue();
-                    this.user = new User();
-                    binder.writeBean(this.user);
-                    if (password == null || password.isEmpty()) {
-                        binder.getValidationErrorHandler().handleError(passwordField, ValidationResult.error("Please enter a password"));
-                        // TODO throw(new ValidationException());
-                    }
-                    userService.createUser(this.user, passwordField.getValue());
-                } else {
-                    binder.writeBean(this.user);
-                    userService.updateUser(this.user);
-                }
-                clearForm();
-                refreshGrid();
-                Notification.show("Data created/updated");
-                UI.getCurrent().navigate(UserMasterDetail.class);
-            } catch (ObjectOptimisticLockingFailureException exception) {
-                Notification n = Notification.show(
-                        "Error updating the data. Someone else has updated the record while you were making changes.");
-                //n.setPosition(Notification.Position.MIDDLE);
-                n.addThemeVariants(NotificationVariant.LUMO_ERROR);
-            } catch (ValidationException validationException) {
-                Notification.show("Failed to update the data. Check again that all values are valid.");
-            }
-        });
     }
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        Optional<Long> userId = event.getRouteParameters().get(USER_ID).map(Long::parseLong);
+        Optional<String> userId = event.getRouteParameters().get(USER_ID).map(String::toString);
         populateForm(null);
         if (userId.isPresent()) {
             Optional<User> userFromBackend = userService.findById(userId.get());
@@ -163,43 +122,6 @@ public class UserMasterDetail extends Div implements BeforeEnterObserver {
         }
     }
 
-    private Dialog createPasswordChangeDialog() {
-        VerticalLayout dialogLayout = new VerticalLayout();
-        PasswordField oldPassword = new PasswordField("Old password");
-        PasswordField newPassword = new PasswordField("New password");
-        dialogLayout.add(oldPassword, newPassword);
-        dialogLayout.setPadding(false);
-        dialogLayout.setSpacing(false);
-        dialogLayout.setAlignItems(FlexComponent.Alignment.STRETCH);
-        dialogLayout.getStyle().set("width", "18rem").set("max-width", "100%");
-
-        Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Change Password");
-        dialog.add(dialogLayout);
-
-        Button cancel = new Button("Cancel", e -> {
-            oldPassword.clear();
-            newPassword.clear();
-            dialog.close();
-        });
-        cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        dialog.getFooter().add(cancel);
-        Button save = new Button("Save", event -> {
-            try {
-                userService.updatePassword(user, oldPassword.getValue(), newPassword.getValue());
-                Notification.show("Password changed, don't forget to save the user data!");
-            } catch (UsernameNotFoundException e) {
-                Notification.show("Wrong username/password, data not modified!");
-            }
-            oldPassword.clear();
-            newPassword.clear();
-            dialog.close();
-        });
-        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        dialog.getFooter().add(save);
-        return dialog;
-    }
-
     private void createEditorLayout(SplitLayout splitLayout) {
         Div editorLayout = new Div();
         editorLayout.setClassName("editor-layout");
@@ -213,11 +135,15 @@ public class UserMasterDetail extends Div implements BeforeEnterObserver {
         editorLayout.add(editorDiv);
 
         FormLayout formLayout = new FormLayout();
-        passwordButton.addClickListener(e->passwordChangeDialog.open());
         createdAt.setReadOnly(true);
         updatedAt.setReadOnly(true);
         lastLoginAt.setReadOnly(true);
-        formLayout.add(name, passwordField, passwordButton, createdAt, updatedAt, enabled, firstName, lastName, email, expiresAt, lastLoginAt);
+        name.setReadOnly(true);
+        firstName.setReadOnly(true);
+        lastName.setReadOnly(true);
+        email.setReadOnly(true);
+        expiresAt.setReadOnly(true);
+        formLayout.add(name, passwordField, createdAt, updatedAt, firstName, lastName, email, expiresAt, lastLoginAt);
 
         editorDiv.add(formLayout);
         createButtonLayout(editorLayout);
@@ -256,7 +182,6 @@ public class UserMasterDetail extends Div implements BeforeEnterObserver {
         this.user = value;
         binder.readBean(this.user);
         passwordField.setVisible(value == null);
-        passwordButton.setVisible(value != null);
         saveCreateButton.setText(value == null ? "Create" : "Save");
     }
 }

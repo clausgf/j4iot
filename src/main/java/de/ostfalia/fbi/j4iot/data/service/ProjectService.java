@@ -10,26 +10,19 @@
 
 package de.ostfalia.fbi.j4iot.data.service;
 
-import de.ostfalia.fbi.j4iot.data.entity.Forwarding;
-import de.ostfalia.fbi.j4iot.data.entity.Project;
-import de.ostfalia.fbi.j4iot.data.entity.ProvisioningToken;
-import de.ostfalia.fbi.j4iot.data.repository.DeviceRepository;
-import de.ostfalia.fbi.j4iot.data.repository.ForwardingRepository;
-import de.ostfalia.fbi.j4iot.data.repository.ProjectRepository;
-import de.ostfalia.fbi.j4iot.data.repository.ProvisioningTokenRepository;
+import de.ostfalia.fbi.j4iot.data.entity.*;
+import de.ostfalia.fbi.j4iot.data.repository.*;
 import de.ostfalia.fbi.j4iot.security.SecurityService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class ProjectService {
@@ -37,6 +30,8 @@ public class ProjectService {
     private static final Logger log = LoggerFactory.getLogger(ProjectService.class);
 
     private final SecurityService securityService;
+    private final KeycloakService keycloakService;
+    private final UserService userService;
     private final ProjectRepository projectRepository;
     private final ProvisioningTokenRepository provisioningTokenRepository;
     private final ForwardingRepository forwardingRepository;
@@ -49,12 +44,16 @@ public class ProjectService {
 
     public ProjectService(
             SecurityService securityService,
+            KeycloakService keycloakService,
+            UserService userService,
             ProjectRepository projectRepository,
             ProvisioningTokenRepository provisioningTokenRepository,
             ForwardingRepository forwardingRepository,
             DeviceRepository deviceRepository)
     {
         this.securityService = securityService;
+        this.keycloakService = keycloakService;
+        this.userService = userService;
         this.projectRepository = projectRepository;
         this.provisioningTokenRepository = provisioningTokenRepository;
         this.forwardingRepository = forwardingRepository;
@@ -63,36 +62,89 @@ public class ProjectService {
 
     // ************************************************************************
 
+    public void setupProjects(){
+        List<String> kcProjects = keycloakService.getKeycloakProjects();
+        List<Project> j4Projects = projectRepository.findAll();
+        //Nicht mehr existierende Projekte löschen
+        for(int i = 0; i < j4Projects.size(); i++){
+            Project j4Project = j4Projects.get(i);
+            boolean found = false;
+            for(String kcUser : kcProjects){
+                if (kcUser.equals(j4Project.getName())){
+                    found = true;
+                    break;
+                }
+            }
+            if (!found){
+                delete(j4Project);
+                log.info("Delete project {}, wich is not in keycloak", j4Project.getName());
+            }
+        }
+        for(String kcProject : kcProjects){
+            Project j4ProjectFound = null;
+            for(Project j4Project : j4Projects){
+                if (kcProject.equals(j4Project.getName())){
+                    j4ProjectFound = j4Project;
+                    break;
+                }
+            }
+            if (j4ProjectFound == null){
+                j4ProjectFound = new Project(kcProject, "", "");
+            }
+            updateOrCreate(j4ProjectFound);
+        }
+    }
+
     public List<Project> findAllByAuth() {
-        Long userId = securityService.getAuthenticatedUserId();
+        String userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
-            return projectRepository.findAllByUserId(userId);
+            return securityService.isAuthenticatedUserAdmin() ?
+                    projectRepository.findAll() :
+                    filterByAuth(userId, projectRepository.findAll());
         } else {
             return new LinkedList<>();
         }
     }
 
     public Optional<Project> findByAuthAndId(Long id) {
-        Long userId = securityService.getAuthenticatedUserId();
+        String userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
-            return projectRepository.findByUserIdAndId(userId, id);
+            return securityService.isAuthenticatedUserAdmin() ?
+                    projectRepository.findById(id) :
+                    filterByAuth(userId, projectRepository.findById(id));
         } else {
             return Optional.empty();
         }
     }
 
     public Optional<Project> findByAuthAndName(String name) {
-        Long userId = securityService.getAuthenticatedUserId();
+        String userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
-            return projectRepository.findByUserIdAndName(userId, name);
+            return securityService.isAuthenticatedUserAdmin() ?
+                    projectRepository.findByName(name) :
+                    filterByAuth(userId, projectRepository.findByName(name));
         } else {
             return Optional.empty();
         }
     }
 
     public List<String> findAllNamesByAuth() {
-        Long userId = securityService.getAuthenticatedUserId();
-        return projectRepository.findAllNamesByUserId(userId);
+        String userId = securityService.getAuthenticatedUserId();
+        if (userId == null) return new ArrayList<>();
+        return securityService.isAuthenticatedUserAdmin() ?
+                projectRepository.findAllNames():
+                filterByAuth(userId, projectRepository.findAll()).stream().map(x -> x.getName()).toList();
+    }
+
+    private Optional<Project> filterByAuth(String userId, Optional<Project> project){
+        if (project.isPresent()){
+            return userService.findById(userId).get().getProjects().contains(project.get().getName()) ? project : Optional.empty();
+        }
+        return project;
+    }
+
+    private List<Project> filterByAuth(String userId, List<Project> projects){
+        return projects.stream().filter(x -> userService.findById(userId).get().getProjects().contains(x.getName())).toList();
     }
 
     public Project updateOrCreate(Project project) {
@@ -142,9 +194,5 @@ public class ProjectService {
             forwarding = Optional.of( forwardingRepository.save(forwarding.get()) );
         }
         return forwarding;
-
     }
-
-    // ************************************************************************
-
 }

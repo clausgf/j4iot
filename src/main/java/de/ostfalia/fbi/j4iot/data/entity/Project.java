@@ -28,10 +28,6 @@ public class Project extends AbstractEntity {
     @LastModifiedDate // TODO https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#auditing.annotations
     private Instant updatedAt;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable
-    private Set<User> users = new HashSet<>();
-
     @Column(length = 80, unique = true)
     @Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9_\\-+]*$", message = "Name must start with a letter or a number, the rest can also contain plus, minus or underscores.")
     @NotNull @NotEmpty
@@ -73,15 +69,6 @@ public class Project extends AbstractEntity {
     }
 
     // ***********************************************************************
-
-    public Set<User> getUsers() {
-        return users;
-    }
-    public void setUsers(Set<User> users) {
-        this.users = users;
-    }
-    public void addUser(User u) { this.users.add(u); u.getProjects().add(this); }
-    public void removeUser(User u) { this.users.remove(u); u.getProjects().remove(this); }
 
     public String getName() {
         return name;

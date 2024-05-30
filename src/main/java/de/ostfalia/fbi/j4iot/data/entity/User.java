@@ -1,106 +1,61 @@
 package de.ostfalia.fbi.j4iot.data.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
-@Entity
-@Table( name = "users",
-        indexes = {
-            @Index(columnList = "name", unique = true)
-        })
-public class User extends AbstractEntity {
+public class User extends DefaultOidcUser implements UserDetails {
 
-    // ***********************************************************************
-
-    @CreationTimestamp
-    private Instant createdAt;
-    @UpdateTimestamp
-    private Instant updatedAt;
-
-    @Column(length = 80, unique = true)
-    @Pattern(regexp = "^[a-zA-Z0-9][a-zA-Z0-9_\\-+]*$", message = "Name must start with a letter or a number, the rest can also contain plus, minus or underscores.")
-    @NotNull @NotEmpty
+    //Keycloak Daten
     private String name;
-
-    @Transient
-    String password = null;
-    @Column(length = 80)
-    @NotNull @NotEmpty @JsonIgnore private String encodedPassword;
-
-    @Column(length = 80)
-    @NotNull private String firstName = "";
-    @Column(length = 80)
+    @NotNull
+    private String firstName = "";
     @NotNull private String lastName = "";
-    @Column(length = 160)
-    @NotNull @Email private String email = "";
-
-    @NotNull private Boolean isEnabled = true;
+    @NotNull @Email
+    private String email = "";
     @NotNull private Instant expiresAt;
-    private Instant lastLoginAt = null;
-    private Instant lastLoginFailureAt = null;
-    private Long loginFailures = 0L;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name="user_role", joinColumns = {@JoinColumn(name="user_id")}, inverseJoinColumns = {@JoinColumn(name="role_id")})
-    private Set<Role> roles = new HashSet<>();
+    private Instant createdAt;
+    private Instant updatedAt;
+    private Instant lastLoginAt;
+    private Instant lastLoginFailureAt;
+    private Long loginFailures;
+    private Set<String> projects;
+    private Long id;
 
-    // not good: @ManyToMany(mappedBy = "users")
-    @ManyToMany()
-    @JoinTable
-    private Set<Project> projects = new HashSet<>();
 
-    // ***********************************************************************
 
-    public User() {
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
+    private static Map<String, Object> claims = new HashMap<>();
+
+    static{
+        claims = new HashMap<>();
+        claims.put("bla", new HashMap<String, Object>());
+        claims.put("sub", new HashMap<String, Object>());
     }
 
-    public User(String name, Boolean isEnabled, String encodedPassword,
-                String firstName, String lastName, String email,
-                Instant expiresAt) {
+    public User(String name, String firstName, String lastName,
+                String email, Instant expiresAt){
+        this(name, firstName, lastName, email, expiresAt, new ArrayList<>());
+    }
+
+    public User(String name, String firstName, String lastName,
+                String email, Instant expiresAt, Collection<? extends GrantedAuthority> authorities){
+        super(authorities, new OidcIdToken("lkasdhf", Instant.now(), Instant.now().plusMillis(5), claims));
+
         this.name = name;
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
-        this.isEnabled = isEnabled;
-        this.encodedPassword = encodedPassword;
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
         this.expiresAt = expiresAt;
-        this.lastLoginAt = null;
-        this.lastLoginFailureAt = null;
-        this.loginFailures = 0L;
+        this.projects = new HashSet<>();
     }
-
-    public static UserBuilder builder() {
-        return new UserBuilder();
-    }
-
-    @Override
-    public String toString() {
-        return name;
-    }
-
-    // ***********************************************************************
 
     public String getName() {
         return name;
@@ -121,26 +76,6 @@ public class User extends AbstractEntity {
     }
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
-    }
-
-    public Boolean getEnabled() {
-        return isEnabled;
-    }
-    public void setEnabled(Boolean enabled) {
-        isEnabled = enabled;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-    public void setPassword(String password) {
-        this.password = password;
-    }
-    public String getEncodedPassword() {
-        return encodedPassword;
-    }
-    public void setEncodedPassword(String hashedPassword) {
-        this.encodedPassword = hashedPassword;
     }
 
     public java.lang.String getFirstName() {
@@ -192,69 +127,41 @@ public class User extends AbstractEntity {
         this.loginFailures = loginFailures;
     }
 
-    public Set<Role> getRoles() {
-        return roles;
-    }
-    public void setRoles(Set<Role> roles) {
-        this.roles = roles;
-    }
-    public void addRole(Role role){
-        this.roles.add(role);
-        role.getUsers().add(this);
-    }
-    public void removeRole(Role role){
-        this.roles.remove(role);
-        role.getUsers().remove(this);
-    }
-
-    public Set<Project> getProjects() {
+    public Set<String> getProjects() {
         return projects;
     }
-    public void setProjects(Set<Project> projects) {
+    public void setProjects(Set<String> projects) {
         this.projects = projects;
     }
 
-    // ***********************************************************************
-
-    public static final class UserBuilder {
-        private Logger log = LoggerFactory.getLogger(UserBuilder.class);
-        private String name;
-        private Boolean isEnabled = true;
-        private String encodedPassword;
-        private String firstName = "";
-        private String lastName = "";
-        private String email = "";
-        private Instant expiresAt = Instant.now().plus(50*365, ChronoUnit.DAYS);
-        private Set<Role> roles = new HashSet<>();
-        private final PasswordEncoder passwordEncoder;
-
-        public UserBuilder() {
-            this.passwordEncoder = createDelegatingPasswordEncoder();
-        }
-
-        public PasswordEncoder createDelegatingPasswordEncoder() {
-            String encodingId = "bcrypt";
-            Map<String, PasswordEncoder> encoders = new HashMap<>();
-            encoders.put(encodingId, new BCryptPasswordEncoder());
-            return new DelegatingPasswordEncoder(encodingId, encoders);
-        }
-
-        public UserBuilder name(String name) { this.name = name; return this; }
-        public UserBuilder enabled(Boolean isEnabled) { this.isEnabled = isEnabled; return this; }
-        public UserBuilder password(String password) { this.encodedPassword = passwordEncoder.encode(password); return this; }
-        public UserBuilder firstName(String firstName) { this.firstName = firstName; return this; }
-        public UserBuilder lastName(String lastName) { this.lastName = lastName; return this; }
-        public UserBuilder email(String email) { this.email = email; return this; }
-        public UserBuilder expiresAt(Instant expiresAt) { this.expiresAt = expiresAt; return this; }
-        public UserBuilder addRole(Role role) { this.roles.add(role); return this; }
-        public User build() {
-            User u = new User(name, isEnabled, encodedPassword,
-                    firstName, lastName, email, expiresAt);
-            roles.forEach(u::addRole);
-            return u;
-        }
+    @Override
+    public String getPassword() {
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        return encoder.encode("fuehner");
     }
 
-    // ***********************************************************************
+    @Override
+    public String getUsername() {
+        return name;
+    }
 
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
 }

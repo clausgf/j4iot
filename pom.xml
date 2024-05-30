@@ -54,6 +54,16 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.storedobject.chart</groupId>
+            <artifactId>so-charts</artifactId>
+            <version>3.2.6</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.appreciated</groupId>
+            <artifactId>apexcharts</artifactId>
+            <version>24.0.0</version>
+        </dependency>
+        <dependency>
             <groupId>de.f0rce</groupId>
             <artifactId>ace</artifactId>
             <version>3.4.2</version>

@@ -1,67 +1,63 @@
 package de.ostfalia.fbi.j4iot.security;
 
 import com.vaadin.flow.spring.security.AuthenticationContext;
-import de.ostfalia.fbi.j4iot.data.entity.User;
-import de.ostfalia.fbi.j4iot.data.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.authentication.AuthenticationEventPublisher;
 import org.springframework.security.authentication.DefaultAuthenticationEventPublisher;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.Map;
 import java.util.Optional;
 
 @Component
 public class SecurityService {
-    private final AuthenticationContext authenticationContext;
-    private final UserRepository userRepository;
 
-    public SecurityService(AuthenticationContext authenticationContext, UserRepository userRepository) {
+    @Value("${keycloak.client.admin}") String ADMIN_ROLE_NAME;
+
+    private final AuthenticationContext authenticationContext;
+
+    public SecurityService(AuthenticationContext authenticationContext) {
         this.authenticationContext = authenticationContext;
-        this.userRepository = userRepository;
     }
 
-    public Optional<UserDetails> getAuthenticatedUserDetails() {
-        return authenticationContext.getAuthenticatedUser(UserDetails.class);
+    public Optional<DefaultOidcUser> getAuthenticatedUserDetails() {
+        return authenticationContext.getAuthenticatedUser(DefaultOidcUser.class);
     }
 
     public String getAuthenticatedUsername() {
-        Optional<UserDetails> userDetails = getAuthenticatedUserDetails();
-        return userDetails.map(UserDetails::getUsername).orElse(null);
+        Optional<DefaultOidcUser> userDetails = getAuthenticatedUserDetails();
+        return userDetails.map(DefaultOidcUser::getName).orElse(null);
     }
 
-    public Long getAuthenticatedUserId() {
-        Optional<UserDetails> userDetails = getAuthenticatedUserDetails();
+    public boolean isAuthenticatedUserAdmin(){
+        Collection<? extends GrantedAuthority> list = SecurityContextHolder.getContext().getAuthentication().getAuthorities();
+        if (list != null && list.contains(new SimpleGrantedAuthority("ROLE_" + ADMIN_ROLE_NAME.toUpperCase()))) {
+            return true;
+        }
+        return false;
+    }
+
+    public String getAuthenticatedUserId() {
+        Optional<DefaultOidcUser> userDetails = getAuthenticatedUserDetails();
         if (userDetails.isPresent()) {
-            Optional<User> user = userRepository.findByName(userDetails.get().getUsername());
-            return user.map(User::getId).orElse(null);
+            return userDetails.get().getName();
         }
         return null;
     }
 
-    public Optional<User> getAuthenticatedUser() {
-        Optional<UserDetails> userDetails = getAuthenticatedUserDetails();
-        if (userDetails.isPresent()) {
-            return userRepository.findByName(userDetails.get().getUsername());
-        }
-        return Optional.empty();
-    }
-
     public String getAuthenticatedUserFullName() {
-        Optional<User> optUser = getAuthenticatedUser();
+        Optional<DefaultOidcUser> optUser = getAuthenticatedUserDetails();
         if (optUser.isPresent()) {
-            User u = optUser.get();
-            if (!u.getFirstName().isEmpty() && !u.getLastName().isEmpty()) {
-                return u.getFirstName() + " " + u.getLastName();
-            } else if (!u.getFirstName().isEmpty()) {
-                return u.getFirstName();
-            } else if (!u.getLastName().isEmpty()) {
-                return u.getLastName();
-            } else {
-                return u.getName();
-            }
+            return optUser.get().getFullName();
         }
         return null;
     }

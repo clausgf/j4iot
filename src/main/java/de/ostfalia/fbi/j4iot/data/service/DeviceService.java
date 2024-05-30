@@ -39,6 +39,7 @@ public class DeviceService {
     private static final Logger log = LoggerFactory.getLogger(DeviceService.class);
 
     private final SecurityService securityService;
+    private final UserService userService;
     private final DeviceRepository deviceRepository;
     private final ProvisioningTokenRepository provisioningTokenRepository;
     private final DeviceTokenRepository deviceTokenRepository;
@@ -48,21 +49,15 @@ public class DeviceService {
 
     // ************************************************************************
 
-    public DeviceService(SecurityService securityService, ProvisioningTokenRepository provisioningTokenRepository, DeviceRepository deviceRepository, DeviceTokenRepository deviceTokenRepository) {
+    public DeviceService(SecurityService securityService, UserService userService, ProvisioningTokenRepository provisioningTokenRepository, DeviceRepository deviceRepository, DeviceTokenRepository deviceTokenRepository) {
         this.securityService = securityService;
+        this.userService = userService;
         this.provisioningTokenRepository = provisioningTokenRepository;
         this.deviceRepository = deviceRepository;
         this.deviceTokenRepository = deviceTokenRepository;
     }
 
     // ************************************************************************
-
-    // TODO generally check auth in all finder methods!
-    /*
-    public List<Project> findAll() {
-        return deviceRepository.findAll();
-    }
-    */
 
     public Optional<Device> findById(Long id) {
         return deviceRepository.findById(id);
@@ -78,48 +73,69 @@ public class DeviceService {
     }
 
     public List<Device> findAllByUserAuth() {
-        Long userId = securityService.getAuthenticatedUserId();
+        String userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
-            return deviceRepository.findAllByUserId(userId);
-        } else { // user id not present: return empty list
+            return securityService.isAuthenticatedUserAdmin() ?
+                    deviceRepository.findAll() :
+                    filterByAuth(userId, deviceRepository.findAll());
+        } else {
             return new LinkedList<>();
         }
     }
 
     public Optional<Device> findByUserAuthAndId(Long id) {
-        Long userId = securityService.getAuthenticatedUserId();
+        String userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
-            return deviceRepository.findByUserIdAndId(userId, id);
+            return securityService.isAuthenticatedUserAdmin() ?
+                    deviceRepository.findById(id) :
+                    filterByAuth(userId, deviceRepository.findById(id));
         } else {
             return Optional.empty();
         }
     }
 
     public List<Device> findAllByUserAuthAndProjectId(Long projectId) {
-        Long userId = securityService.getAuthenticatedUserId();
+        String userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
-            return deviceRepository.findAllByUserIdAndProjectId(userId, projectId);
+            return  securityService.isAuthenticatedUserAdmin() ?
+                    deviceRepository.findAllByProjectId(projectId) :
+                    filterByAuth(userId, deviceRepository.findAllByProjectId(projectId));
         } else {
             return new LinkedList<>();
         }
     }
 
     public Optional<Device> findByUserAuthAndProjectIdAndName(Long projectId, String name) {
-        Long userId = securityService.getAuthenticatedUserId();
+        String userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
-            return deviceRepository.findByUserIdAndProjectIdAndName(userId, projectId, name);
+            return securityService.isAuthenticatedUserAdmin() ?
+                    deviceRepository.findByProjectIdAndName(projectId, name) :
+                    filterByAuth(userId, deviceRepository.findByProjectIdAndName(projectId, name));
         } else {
             return Optional.empty();
         }
     }
 
     public List<String> findAllNamesByUserAuthAndProjectId(Long projectId) {
-        Long userId = securityService.getAuthenticatedUserId();
+        String userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
-            return deviceRepository.findAllNamesByUserIdAndProjectId(userId, projectId);
+            return securityService.isAuthenticatedUserAdmin() ?
+                    deviceRepository.findAllNamesByProjectId(projectId) :
+                    filterByAuth(userId, deviceRepository.findAllByProjectId(projectId)).stream().map(x -> x.getName()).toList();
         } else {
             return new LinkedList<>();
         }
+    }
+
+    private Optional<Device> filterByAuth(String userId, Optional<Device> device){
+        if (device.isPresent()){
+            return userService.findById(userId).get().getProjects().contains(device.get().getProject().getName()) ? device : Optional.empty();
+        }
+        return device;
+    }
+
+    private List<Device> filterByAuth(String userId, List<Device> projects){
+        return projects.stream().filter(x -> userService.findById(userId).get().getProjects().contains(x.getProject().getName())).toList();
     }
 
     public Device updateOrCreate(Device device) {

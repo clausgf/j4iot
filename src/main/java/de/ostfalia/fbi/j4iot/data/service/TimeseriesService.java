@@ -6,8 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.influxdb.client.*;
 import com.influxdb.client.domain.Bucket;
 import com.influxdb.client.domain.Organization;
+import com.influxdb.client.domain.Query;
 import com.influxdb.client.domain.WritePrecision;
 import com.influxdb.client.write.Point;
+import com.influxdb.query.FluxRecord;
+import com.influxdb.query.FluxTable;
 import de.ostfalia.fbi.j4iot.configuration.InfluxdbConfiguration;
 import de.ostfalia.fbi.j4iot.data.entity.Device;
 import org.slf4j.Logger;
@@ -18,6 +21,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class TimeseriesService {
@@ -52,6 +56,55 @@ public class TimeseriesService {
         bucketsApi = clientApi.getBucketsApi();
         writeApi = clientApi.getWriteApiBlocking();
         espLogPattern = Pattern.compile(ESP_LOG_REGEX);
+    }
+
+    public List<FluxRecord> loadData(Device device, String field, Instant startTime, Instant endTime, long aggregationSev){
+        List<FluxRecord> records = new ArrayList<>();
+        //from(bucket: "epaper") |> range(start: 0) |> filter(fn: (r) => r["_measurement"] == "system") |> filter(fn: (r) => r["_field"] == "battery_V") |> filter(fn: (r) => r["device_name"] == "e32-68b6b34655ac") |> aggregateWindow(every: 5s, fn: mean, createEmpty: false) |> yield(name: "mean")
+        String query = "from(bucket: \"epaper\") |> range(start: 0) |> filter(fn: (r) => r[\"_measurement\"] == \"system\") |> filter(fn: (r) => r[\"_field\"] == \"battery_V\") |> filter(fn: (r) => r[\"device_name\"] == \"e32-68b6b34655ac\") |> aggregateWindow(every: 5s, fn: mean, createEmpty: false) |> yield(name: \"mean\")";
+        query = String.format("from(bucket: \"epaper\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"system\") |> filter(fn: (r) => r[\"_field\"] == \"%s\") |> filter(fn: (r) => r[\"device_name\"] == \"%s\") |> aggregateWindow(every: %ds, fn: mean, createEmpty: false) |> yield(name: \"mean\")",
+                startTime.toString(), endTime.toString(), field, device.getName(), aggregationSev);
+        try{
+            QueryApi qa = clientApi.getQueryApi();
+            List<FluxTable> tables = qa.query(query);
+            for(FluxTable table : tables){
+                records.addAll(table.getRecords());
+            }
+        }
+        catch(Exception e){
+            String result = e.getMessage();
+            System.out.println(result);
+            System.out.println(result);
+            System.out.println(result);
+            System.out.println(result);
+        }
+        return records;
+    }
+
+    public List<FluxTable> loadMeasurementFields(String bucket, String measurement){
+        String query = String.format("import \"influxdata/influxdb/schema\" schema.fieldKeys(bucket: \"%s\", predicate: (r) => r._measurement == \"%s\")",
+                bucket, measurement);
+        return doQuery(query);
+    }
+
+    private List<FluxTable> doQuery(String query){
+        QueryApi qa = clientApi.getQueryApi();
+        return qa.query(query);
+    }
+
+    public Object Test(String query){
+        try{
+            Bucket bucket = bucketsApi.findBucketByName("epaper");
+
+            QueryApi qa = clientApi.getQueryApi();
+
+            List<FluxTable> tables = qa.query(query);
+            return tables;
+        }
+        catch(Exception e){
+            String result = e.getMessage();
+            return result;
+        }
     }
 
     // ************************************************************************
