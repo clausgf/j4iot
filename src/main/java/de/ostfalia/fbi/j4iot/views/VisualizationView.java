@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 public class VisualizationView extends VerticalLayout {
 
     Logger log = LoggerFactory.getLogger(VisualizationView.class);
-    @Value("${j4iot.visualization.frame}") private String springDocSwaggerUrl = "https://iot-i.ostfalia.de/grafana/public-dashboards/3ec9aa9dec4d45eb8f67cfd9bb223ed0";
+    @Value("${j4iot.visualization.url}") private String springDocSwaggerUrl = "https://iot-i.ostfalia.de/grafana/public-dashboards/3ec9aa9dec4d45eb8f67cfd9bb223ed0";
     
     public VisualizationView() {
         IFrame frame = new IFrame();
