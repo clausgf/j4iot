@@ -136,9 +136,9 @@ public class DeviceList extends GenericList<Device> implements HasDynamicTitle, 
             grid.setItems();
         } else {
             if (project == null) {
-                grid.setItems(filterItems(deviceService.findAllByUserAuth()));
+                grid.setItems(filterItems(deviceService.findAllByAuth()));
             } else {
-                grid.setItems(filterItems(deviceService.findAllByUserAuthAndProjectId(project.getId())));
+                grid.setItems(filterItems(deviceService.findAllByAuthAndProjectId(project.getId())));
             }
         }
     }

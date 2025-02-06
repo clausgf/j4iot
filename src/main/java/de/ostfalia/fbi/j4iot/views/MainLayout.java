@@ -211,7 +211,7 @@ public class MainLayout extends AppLayout {
                 isValueChangeEnabled = false;
                 String deviceName = comboBoxStringComponentValueChangeEvent.getValue();
                 if (currentProject != null) {
-                    Optional<Device> device = deviceService.findByUserAuthAndProjectIdAndName(currentProject.getId(), deviceName);
+                    Optional<Device> device = deviceService.findByAuthAndProjectIdAndName(currentProject.getId(), deviceName);
                     setCurrentDevice(device.orElse(null));
                 } else {
                     setCurrentDevice(null);
@@ -316,7 +316,7 @@ public class MainLayout extends AppLayout {
         boolean oldIsValueChangeEnabled = isValueChangeEnabled;
         isValueChangeEnabled = false;
         if (currentProject != null) {
-            deviceSelection.setItems(deviceService.findAllNamesByUserAuthAndProjectId(currentProject.getId()));
+            deviceSelection.setItems(deviceService.findAllNamesByAuthAndProjectId(currentProject.getId()));
         } else {
             deviceSelection.setItems();
         }

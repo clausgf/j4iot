@@ -172,7 +172,7 @@ public class DeviceSettings extends GenericForm<Device> implements HasDynamicTit
 
     @Override
     protected Device load(long id) {
-        return deviceService.findByUserAuthAndId(id).orElse(null);
+        return deviceService.findByAuthAndId(id).orElse(null);
     }
 
     @Override

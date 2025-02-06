@@ -104,7 +104,7 @@ public class DeviceDashboard extends Div implements HasDynamicTitle, BeforeEnter
         item = null;
         Optional<Long> id = routeParameters.getLong(ID_ROUTING_PARAMETER);
         if (id.isPresent()) {
-            item = service.findByUserAuthAndId(id.get()).orElse(null);
+            item = service.findByAuthAndId(id.get()).orElse(null);
             lastSeenText.setText(item.getLastSeenAt() != null ? item.getLastSeenAt().toString() : "unknown");
             lastProvisioningText.setText(item.getLastProvisionedAt() != null ? item.getLastProvisionedAt().toString() : "unknown");
             lastProvisiongRequestText.setText(item.getLastProvisioningRequestAt() != null ? item.getLastProvisioningRequestAt().toString() : "unknown");

@@ -26,10 +26,7 @@ import org.springframework.util.Assert;
 
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class ProjectService {
@@ -63,10 +60,18 @@ public class ProjectService {
 
     // ************************************************************************
 
+    private Optional<Project> filterByAuth(Long userId, Optional<Project> project) {
+        return project; // TODO
+    }
+
+    private List<Project> filterByAuth(Long userId, List<Project> projects) {
+        return projects; // TODO
+    }
+
     public List<Project> findAllByAuth() {
         Long userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
-            return projectRepository.findAllByUserId(userId);
+            return filterByAuth(userId, projectRepository.findAll());
         } else {
             return new LinkedList<>();
         }
@@ -75,7 +80,7 @@ public class ProjectService {
     public Optional<Project> findByAuthAndId(Long id) {
         Long userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
-            return projectRepository.findByUserIdAndId(userId, id);
+            return filterByAuth(userId, projectRepository.findById(id));
         } else {
             return Optional.empty();
         }
@@ -84,15 +89,15 @@ public class ProjectService {
     public Optional<Project> findByAuthAndName(String name) {
         Long userId = securityService.getAuthenticatedUserId();
         if (userId != null) {
-            return projectRepository.findByUserIdAndName(userId, name);
+            return filterByAuth(userId, projectRepository.findByName(name));
         } else {
             return Optional.empty();
         }
     }
 
     public List<String> findAllNamesByAuth() {
-        Long userId = securityService.getAuthenticatedUserId();
-        return projectRepository.findAllNamesByUserId(userId);
+        List<Project> projects = findAllByAuth();
+        return projects.stream().map(x -> x.getName()).toList();
     }
 
     public Project updateOrCreate(Project project) {

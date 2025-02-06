@@ -32,6 +32,10 @@ public class SecurityService {
         return userDetails.map(UserDetails::getUsername).orElse(null);
     }
 
+    public boolean isAuthenticatedUserAdmin() {
+        return true; // TODO determine roles
+    }
+
     public Long getAuthenticatedUserId() {
         Optional<UserDetails> userDetails = getAuthenticatedUserDetails();
         if (userDetails.isPresent()) {
